@@ -1,0 +1,269 @@
+{
+	"info": {
+		"_postman_id": "255ad690-1989-4760-9844-c2b10bc10e8b",
+		"name": "THIQAH",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "9183757",
+		"_collection_link": "https://blue-rocket-181984.postman.co/workspace/XXX~fd2ae16c-926e-47c1-894b-799ce59c0987/collection/9183757-255ad690-1989-4760-9844-c2b10bc10e8b?action=share&source=collection_link&creator=9183757"
+	},
+	"item": [
+		{
+			"name": "/api/ShoppingCart/:userId Copy 3",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "text/plain"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/ShoppingCart/:userId",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"ShoppingCart",
+						":userId"
+					],
+					"variable": [
+						{
+							"key": "userId",
+							"value": "{{userId}}",
+							"description": "(Required) "
+						}
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Success",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "text/plain"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/ShoppingCart/:userId",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"ShoppingCart",
+								":userId"
+							],
+							"variable": [
+								{
+									"key": "userId"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "[\n  {\n    \"book\": {\n      \"bookId\": \"<integer>\",\n      \"title\": \"<string>\",\n      \"author\": \"<string>\",\n      \"category\": \"<string>\",\n      \"price\": \"<double>\",\n      \"coverFileName\": \"<string>\"\n    },\n    \"quantity\": \"<integer>\"\n  },\n  {\n    \"book\": {\n      \"bookId\": \"<integer>\",\n      \"title\": \"<string>\",\n      \"author\": \"<string>\",\n      \"category\": \"<string>\",\n      \"price\": \"<double>\",\n      \"coverFileName\": \"<string>\"\n    },\n    \"quantity\": \"<integer>\"\n  }\n]"
+				}
+			]
+		},
+		{
+			"name": "/api/CheckOut/:userId Copy 3",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Accept",
+						"value": "text/plain"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"orderDetails\": [\n        {\n            \"book\": {\n                \"bookId\": 2,\n                \"title\": \"Harry Potter and the Order of the Phoenix\",\n                \"author\": \"JKR\",\n                \"category\": \"Mystery\",\n                \"price\": 432,\n                \"coverFileName\": \"8f5f8b64-794c-4dbb-b369-6cc9cc762ce0HP5.jpg\"\n            },\n            \"quantity\": 1\n        }\n    ],\n    \"cartTotal\": 432\n}",
+					"options": {
+						"raw": {
+							"headerFamily": "json",
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/CheckOut/:userId",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"CheckOut",
+						":userId"
+					],
+					"variable": [
+						{
+							"key": "userId",
+							"value": "{{userId}}",
+							"description": "(Required) "
+						}
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Success",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "text/plain"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"orderId\": \"<string>\",\n  \"orderDetails\": [\n    {\n      \"book\": {\n        \"bookId\": \"<integer>\",\n        \"title\": \"<string>\",\n        \"author\": \"<string>\",\n        \"category\": \"<string>\",\n        \"price\": \"<double>\",\n        \"coverFileName\": \"<string>\"\n      },\n      \"quantity\": \"<integer>\"\n    },\n    {\n      \"book\": {\n        \"bookId\": \"<integer>\",\n        \"title\": \"<string>\",\n        \"author\": \"<string>\",\n        \"category\": \"<string>\",\n        \"price\": \"<double>\",\n        \"coverFileName\": \"<string>\"\n      },\n      \"quantity\": \"<integer>\"\n    }\n  ],\n  \"cartTotal\": \"<double>\",\n  \"orderDate\": \"<dateTime>\"\n}",
+							"options": {
+								"raw": {
+									"headerFamily": "json",
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/CheckOut/:userId",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"CheckOut",
+								":userId"
+							],
+							"variable": [
+								{
+									"key": "userId"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "<integer>"
+				},
+				{
+					"name": "Unauthorized",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"orderId\": \"<string>\",\n  \"orderDetails\": [\n    {\n      \"book\": {\n        \"bookId\": \"<integer>\",\n        \"title\": \"<string>\",\n        \"author\": \"<string>\",\n        \"category\": \"<string>\",\n        \"price\": \"<double>\",\n        \"coverFileName\": \"<string>\"\n      },\n      \"quantity\": \"<integer>\"\n    },\n    {\n      \"book\": {\n        \"bookId\": \"<integer>\",\n        \"title\": \"<string>\",\n        \"author\": \"<string>\",\n        \"category\": \"<string>\",\n        \"price\": \"<double>\",\n        \"coverFileName\": \"<string>\"\n      },\n      \"quantity\": \"<integer>\"\n    }\n  ],\n  \"cartTotal\": \"<double>\",\n  \"orderDate\": \"<dateTime>\"\n}",
+							"options": {
+								"raw": {
+									"headerFamily": "json",
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/CheckOut/:userId",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"CheckOut",
+								":userId"
+							],
+							"variable": [
+								{
+									"key": "userId"
+								}
+							]
+						}
+					},
+					"status": "Unauthorized",
+					"code": 401,
+					"_postman_previewlanguage": "text",
+					"header": [],
+					"cookie": [],
+					"body": ""
+				},
+				{
+					"name": "Forbidden",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"orderId\": \"<string>\",\n  \"orderDetails\": [\n    {\n      \"book\": {\n        \"bookId\": \"<integer>\",\n        \"title\": \"<string>\",\n        \"author\": \"<string>\",\n        \"category\": \"<string>\",\n        \"price\": \"<double>\",\n        \"coverFileName\": \"<string>\"\n      },\n      \"quantity\": \"<integer>\"\n    },\n    {\n      \"book\": {\n        \"bookId\": \"<integer>\",\n        \"title\": \"<string>\",\n        \"author\": \"<string>\",\n        \"category\": \"<string>\",\n        \"price\": \"<double>\",\n        \"coverFileName\": \"<string>\"\n      },\n      \"quantity\": \"<integer>\"\n    }\n  ],\n  \"cartTotal\": \"<double>\",\n  \"orderDate\": \"<dateTime>\"\n}",
+							"options": {
+								"raw": {
+									"headerFamily": "json",
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/CheckOut/:userId",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"CheckOut",
+								":userId"
+							],
+							"variable": [
+								{
+									"key": "userId"
+								}
+							]
+						}
+					},
+					"status": "Forbidden",
+					"code": 403,
+					"_postman_previewlanguage": "text",
+					"header": [],
+					"cookie": [],
+					"body": ""
+				}
+			]
+		}
+	]
+}

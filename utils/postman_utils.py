@@ -4,10 +4,12 @@ import re
 import uuid
 import html
 from urllib.parse import urlparse
+
+import anthropic
+from anthropic import Anthropic
 from lxml import etree as ET
 import openai
 from flask import current_app
-
 
 def analyze_postman_collection(postman_file_path):
     """Analyze a Postman collection for correlations and parameters"""
@@ -389,39 +391,127 @@ def has_auth_header(headers):
     return False
 
 
-def generate_jmx_with_gpt(postman_json, correlation_data):
-    """Generate JMX using GPT-4"""
+# def generate_jmx_with_claude(postman_json, correlation_data):
+#     """Generate JMX using Claude AI"""
+#     try:
+#         full_prompt = (
+#             "You are a senior QA automation engineer. Convert the following Postman collection into a JMeter JMX test plan. "
+#             "Apply dynamic value correlations using JSON Extractors wherever applicable, based on the correlation mapping below.\n\n"
+#             "=== Postman Collection JSON ===\n"
+#             f"{json.dumps(postman_json, indent=2)}\n\n"
+#             "=== Correlation Mapping ===\n"
+#             f"{json.dumps(correlation_data, indent=2)}\n\n"
+#             "Please return the JMeter JMX XML content as output only. Make sure the structure is valid and ready to import in JMeter."
+#         )
+#
+#         # Assuming you have the anthropic package installed and client configured
+#         client = Anthropic()
+#
+#         message = client.messages.create(
+#             model="claude-3-7-sonnet-20250219",  # or another Claude 3 model
+#             max_tokens=64000,
+#             temperature=0.3,
+#             system="You are a senior QA automation engineer.",
+#             messages=[
+#                 {"role": "user", "content": full_prompt}
+#             ]
+#         )
+#
+#         result = message.content[0].text
+#         output_path = os.path.join(
+#             current_app.config['UPLOAD_FOLDER'],
+#             f"generated_test_plan_{uuid.uuid4().hex[:8]}.jmx"
+#         )
+#
+#         with open(output_path, "w", encoding='utf-8') as f:
+#             f.write(result)
+#
+#         return output_path
+#
+#     except Exception as e:
+#         current_app.logger.error(f"Error generating JMX with Claude: {str(e)}")
+#         raise
+
+def summarize_postman(collection_json):
+    summary = {
+        "info": collection_json.get("info", {}),
+        "items": []
+    }
+
+    def extract_request_info(item):
+        req = item.get("request", {})
+        return {
+            "name": item.get("name", ""),
+            "method": req.get("method", ""),
+            "url": req.get("url", {}).get("raw", ""),
+            "body": req.get("body", {}).get("raw", "")[:1000] if req.get("body", {}).get("mode") == "raw" else "",
+            "headers": req.get("header", [])
+        }
+
+    def walk_and_collect(items):
+        collected = []
+        for item in items:
+            if 'item' in item:
+                collected.extend(walk_and_collect(item['item']))
+            else:
+                collected.append(extract_request_info(item))
+        return collected
+
+    summary["items"] = walk_and_collect(collection_json.get("item", []))
+    return summary
+
+
+def extract_jmx_xml(text):
+    match = re.search(r"<jmeterTestPlan[\s\S]*?</jmeterTestPlan>", text)
+    return match.group(0) if match else ""
+
+
+def ask_claude_for_jmx(postman_json, correlation_data):
     try:
-        full_prompt = (
+        client = anthropic.Anthropic(api_key="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")
+
+        prompt = (
             "You are a senior QA automation engineer. Convert the following Postman collection into a JMeter JMX test plan. "
             "Apply dynamic value correlations using JSON Extractors wherever applicable, based on the correlation mapping below.\n\n"
-            "=== Postman Collection JSON ===\n"
-            f"{json.dumps(postman_json, indent=2)}\n\n"
+            "=== Postman Collection Summary ===\n"
+            f"{json.dumps(summarize_postman(postman_json), indent=2)}\n\n"
             "=== Correlation Mapping ===\n"
             f"{json.dumps(correlation_data, indent=2)}\n\n"
-            "Please return the JMeter JMX XML content as output only. Make sure the structure is valid and ready to import in JMeter."
+            "Please return only the JMeter JMX XML content."
         )
 
-        completion = openai.ChatCompletion.create(
-            model="gpt-4",
+        # Use streaming with proper handling
+        with client.messages.stream(
+            model="claude-3-7-sonnet-20250219",
+            max_tokens=64000,
+            temperature=0.3,
+            system="You are a senior QA automation engineer specializing in JMeter test plans.",
             messages=[
-                {"role": "system", "content": "You are a senior QA automation engineer."},
-                {"role": "user", "content": full_prompt}
-            ],
-            temperature=0.3
-        )
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        ) as stream:
+            full_text = ""
+            for chunk in stream:
+                if chunk.type == "content_block_delta":
+                    full_text += chunk.delta.text
 
-        result = completion['choices'][0]['message']['content']
-        output_path = os.path.join(
-            current_app.config['UPLOAD_FOLDER'],
-            f"generated_test_plan_{uuid.uuid4().hex[:8]}.jmx"
-        )
+            # print(full_text)
+            jmx_content = extract_jmx_xml(full_text)
 
-        with open(output_path, "w", encoding='utf-8') as f:
-            f.write(result)
-
-        return output_path
+            if jmx_content.strip():
+                output_path = os.path.join(
+                    current_app.config['UPLOAD_FOLDER'],
+                    f"generated_test_plan_claude_{uuid.uuid4().hex[:8]}.jmx"
+                )
+                with open(output_path, "w", encoding="utf-8") as f:
+                    f.write(jmx_content)
+                return output_path
+            else:
+                raise ValueError("Claude returned no valid JMX content")
 
     except Exception as e:
-        current_app.logger.error(f"Error generating JMX with GPT: {str(e)}")
+        current_app.logger.error(f"Error generating JMX with Claude: {str(e)}")
         raise

@@ -15,7 +15,7 @@
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active" id="analyze-tab" data-bs-toggle="tab"
                                     data-bs-target="#analyze" type="button" role="tab">
-                                <i class="bi bi-search"></i> Analyze Collection
+                                <i class="bi bi-magic"></i> Create Postman JMX with Claude AI
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
@@ -29,14 +29,13 @@
                     <div class="tab-content" id="postmanTabContent">
                         <!-- Analyze Tab -->
                         <div class="tab-pane fade show active" id="analyze" role="tabpanel">
-                            <form method="post" enctype="multipart/form-data" action="{{ url_for('postman_tools') }}">
+                            <form method="post" enctype="multipart/form-data" action="{{ url_for('postman_tools') }}" id="analyzeForm" onsubmit="return handleAnalyzeSubmit(event)">
                                 <input type="hidden" name="action" value="analyze">
 
                                 <div class="mb-4">
-                                    <h4 class="mb-3">Analyze Postman Collection</h4>
+                                    <h4 class="mb-3">Create JMX with Claude AI</h4>
                                     <p class="text-muted">
-                                        Upload your Postman collection JSON to identify dynamic parameters
-                                        that need correlation in JMeter.
+                                        Upload your Postman collection JSON to analyze it first, then generate an optimized JMX file using Claude AI.
                                     </p>
                                 </div>
 
@@ -50,8 +49,12 @@
                                 </div>
 
                                 <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                    <button type="submit" class="btn btn-info">
+                                    <button type="submit" class="btn btn-info me-md-2">
                                         <i class="bi bi-search"></i> Analyze Collection
+                                    </button>
+                                    <button type="button" id="claudeButton" class="btn btn-success"
+                                            {% if not (show_analysis and analysis) %}disabled{% endif %}>
+                                        <i class="bi bi-robot"></i> Generate with Claude AI
                                     </button>
                                 </div>
                             </form>
@@ -85,7 +88,7 @@
                                             <div class="accordion-body">
                                                 <div class="mb-2">
                                                     <strong>URL:</strong>
-                                                    <a href="{{ request.url }}" target="_blank">{{ request.url }}</a>
+                                                    <a href="{{ request.url }}" target="_blank" class="url-display">{{ request.url }}</a>
                                                 </div>
 
                                                 {% if request.parameters %}
@@ -246,6 +249,21 @@
         </div>
     </div>
 </div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center p-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h5>Generating JMX with Claude AI</h5>
+                <p class="mb-0">Please wait while we create your optimized test plan...</p>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_css %}
@@ -280,54 +298,120 @@
     .nav-tabs .nav-link:hover:not(.active) {
         border-bottom-color: #dee2e6;
     }
+
+    #claudeButton:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+    }
 </style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize clipboard for JSONPath examples
-    const clipboard = new ClipboardJS('.copy-jsonpath', {
-        text: function(trigger) {
-            return trigger.getAttribute('data-jsonpath');
-        }
+    // Initialize Bootstrap tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 
-    clipboard.on('success', function(e) {
-        const tooltip = bootstrap.Tooltip.getInstance(e.trigger);
-        if (tooltip) {
-            e.trigger.setAttribute('data-bs-original-title', 'Copied!');
-            tooltip.show();
-            setTimeout(function() {
-                e.trigger.setAttribute('data-bs-original-title', 'Copy to clipboard');
-                tooltip.hide();
-            }, 2000);
-        }
-        e.clearSelection();
-    });
-
-    // Store active tab in localStorage
-    const postmanTabs = document.getElementById('postmanTabs');
-    if (postmanTabs) {
-        postmanTabs.addEventListener('click', function(e) {
-            if (e.target.classList.contains('nav-link')) {
-                localStorage.setItem('postmanActiveTab', e.target.id);
-            }
+    // Tab persistence
+    const tabEls = document.querySelectorAll('button[data-bs-toggle="tab"]');
+    tabEls.forEach(tabEl => {
+        tabEl.addEventListener('click', function() {
+            localStorage.setItem('activeTab', this.getAttribute('data-bs-target'));
         });
+    });
 
-        const activeTab = localStorage.getItem('postmanActiveTab');
-        if (activeTab) {
-            const tab = new bootstrap.Tab(document.getElementById(activeTab));
-            tab.show();
-        }
+    const activeTab = localStorage.getItem('activeTab');
+    if (activeTab) {
+        const tab = new bootstrap.Tab(document.querySelector(`[data-bs-target="${activeTab}"]`));
+        tab.show();
     }
 
-    // Enhance parameter tables
+    // Postman Analysis Specific Functionality
+    const analyzeForm = document.getElementById('analyzeForm');
+    const claudeButton = document.getElementById('claudeButton');
+    const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+
+    // Enable Claude button if analysis results are shown
+    if (document.querySelector('#analysisAccordion') && claudeButton) {
+        claudeButton.disabled = false;
+    }
+
+    // Handle Claude button click
+    if (claudeButton) {
+        claudeButton.addEventListener('click', function() {
+            const fileInput = analyzeForm.querySelector('input[type="file"]');
+            if (!fileInput || !fileInput.files.length) {
+                alert('Please analyze a Postman collection first');
+                return;
+            }
+
+            // Show loading modal
+            loadingModal.show();
+
+            // Create FormData with the analyzed file
+            const formData = new FormData();
+            formData.append('postman_file', fileInput.files[0]);
+
+            // Make AJAX request to generate JMX with Claude
+            fetch('/generate_jmx_with_claude', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw err; });
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                // Create download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `claude_${fileInput.files[0].name.replace('.json', '.jmx')}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert(error.error || 'Failed to generate JMX file');
+            })
+            .finally(() => {
+                loadingModal.hide();
+            });
+        });
+    }
+
+    // Form submission handling with loading indicators
+    if (analyzeForm) {
+        analyzeForm.addEventListener('submit', function() {
+            localStorage.setItem('analysisInProgress', 'true');
+        });
+    }
+
+    // Auto-format URLs in correlation results
+    document.querySelectorAll('.url-display').forEach(el => {
+        const url = el.textContent.trim();
+        if (url) {
+            el.innerHTML = '';
+            const a = document.createElement('a');
+            a.href = url;
+            a.textContent = url;
+            a.target = '_blank';
+            el.appendChild(a);
+        }
+    });
+
+    // Responsive table handling
     document.querySelectorAll('.table-responsive').forEach(tableWrapper => {
         tableWrapper.addEventListener('mouseenter', function() {
             this.style.overflowX = 'auto';
         });
-
         tableWrapper.addEventListener('mouseleave', function() {
             this.style.overflowX = 'hidden';
         });

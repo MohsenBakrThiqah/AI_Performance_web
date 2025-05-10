@@ -17,6 +17,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     Processing...
                 `;
             }
+
+            // Special handling for Postman analysis form
+            if (this.id === 'analyzeForm') {
+                localStorage.setItem('analysisInProgress', 'true');
+            }
         });
     });
 
@@ -32,6 +37,67 @@ document.addEventListener('DOMContentLoaded', function() {
     if (activeTab) {
         const tab = new bootstrap.Tab(document.querySelector(`[data-bs-target="${activeTab}"]`));
         tab.show();
+    }
+
+    // Postman Analysis Specific Functionality
+    const analyzeForm = document.getElementById('analyzeForm');
+    const claudeButton = document.getElementById('claudeButton');
+
+    // Enable Claude button if analysis results are shown
+    if (document.querySelector('#analysisAccordion') && claudeButton) {
+        claudeButton.disabled = false;
+    }
+
+    // Handle Claude button click
+    if (claudeButton) {
+        claudeButton.addEventListener('click', function(e) {
+            if (this.disabled) return;
+
+            const fileInput = document.querySelector('#analyzeForm input[type="file"]');
+            if (!fileInput || !fileInput.files.length) {
+                alert('Please analyze a Postman collection first');
+                return;
+            }
+
+            // Create FormData with the analyzed file
+            const formData = new FormData();
+            formData.append('postman_file', fileInput.files[0]);
+
+            // Show loading state
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Generating...';
+            this.disabled = true;
+
+            // Make AJAX request to generate JMX with Claude
+            fetch('/generate_jmx_with_claude', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw err; });
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                // Create download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `claude_${fileInput.files[0].name.replace('.json', '.jmx')}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert(error.error || 'Failed to generate JMX file');
+            })
+            .finally(() => {
+                this.innerHTML = '<i class="bi bi-robot"></i> Generate with Claude AI';
+                this.disabled = false;
+            });
+        });
     }
 
     // Dynamic form field handling for findings

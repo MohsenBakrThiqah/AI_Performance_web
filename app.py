@@ -1,11 +1,15 @@
+import json
 import os
 import logging
-from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, jsonify
+import uuid
+
+from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, jsonify, send_file, \
+    session
 from werkzeug.utils import secure_filename
 from config import Config
 from utils.report_utils import generate_jmeter_report
 from utils.correlation_utils import analyze_jmeter_correlations
-from utils.postman_utils import analyze_postman_collection, convert_postman_to_jmx
+from utils.postman_utils import analyze_postman_collection, convert_postman_to_jmx, ask_claude_for_jmx
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -17,8 +21,6 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
     config_class.init_app(app)
 
-    # Register blueprints or routes would go here
-
     @app.route('/')
     def index():
         return render_template('index.html')
@@ -27,12 +29,11 @@ def create_app(config_class=Config):
     def report_generator():
         if request.method == 'POST':
             try:
-                # Get form data
                 form_data = {
                     'project_name': request.form.get('project_name'),
                     'engineer_name': request.form.get('engineer_name'),
                     'test_round': request.form.get('test_round'),
-                    'performance_test_type': request.form.get('performance_test_type'),
+                    'test_type': request.form.get('performance_test_type'),
                     'cu': request.form.get('cu'),
                     'ramp_up': request.form.get('ramp_up'),
                     'duration': request.form.get('duration'),
@@ -47,11 +48,21 @@ def create_app(config_class=Config):
                     'reopened_bugs': request.form.get('reopened_bugs'),
                     'release_report': request.form.get('release_report'),
                     'scope': request.form.get('scope'),
-                    'findings': [request.form.get(f'finding_{i}') for i in range(1, 13)],
+                    'finding_1': request.form.get('finding_1'),
+                    'finding_2': request.form.get('finding_2'),
+                    'finding_3': request.form.get('finding_3'),
+                    'finding_4': request.form.get('finding_4'),
+                    'finding_5': request.form.get('finding_5'),
+                    'finding_6': request.form.get('finding_6'),
+                    'finding_7': request.form.get('finding_7'),
+                    'finding_8': request.form.get('finding_8'),
+                    'finding_9': request.form.get('finding_9'),
+                    'finding_10': request.form.get('finding_10'),
+                    'finding_11': request.form.get('finding_11'),
+                    'finding_12': request.form.get('finding_12'),
                     'use_gpt': request.form.get('use_gpt') == 'on'
                 }
 
-                # Handle file upload
                 if 'report_folder' not in request.files:
                     flash('No report folder selected', 'error')
                     return redirect(request.url)
@@ -61,15 +72,12 @@ def create_app(config_class=Config):
                     flash('No selected file', 'error')
                     return redirect(request.url)
 
-                # Save and process
                 filename = secure_filename(report_folder.filename)
                 upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 report_folder.save(upload_path)
 
-                # Generate report
                 result_path = generate_jmeter_report(upload_path, form_data)
 
-                # Return the generated report
                 return send_from_directory(
                     os.path.dirname(result_path),
                     os.path.basename(result_path),
@@ -133,10 +141,23 @@ def create_app(config_class=Config):
 
                 if action == 'analyze':
                     analysis = analyze_postman_collection(upload_path)
-                    return render_template('postman.html', analysis=analysis, show_analysis=True)
+                    # Store the filename in session for Claude generation
+                    session['analyzed_file'] = filename
+                    return render_template('postman.html',
+                                           analysis=analysis,
+                                           show_analysis=True,
+                                           analyzed_file=filename)
 
                 elif action == 'convert':
-                    output_path = convert_postman_to_jmx(upload_path)
+                    use_gpt = request.form.get('enable_gpt') == 'on'
+                    if use_gpt:
+                        with open(upload_path, 'r', encoding='utf-8') as f:
+                            postman_json = json.load(f)
+                        correlation_data = analyze_postman_collection(upload_path)
+                        output_path = ask_claude_for_jmx(postman_json, correlation_data)
+                    else:
+                        output_path = convert_postman_to_jmx(upload_path)
+
                     return send_from_directory(
                         os.path.dirname(output_path),
                         os.path.basename(output_path),
@@ -149,6 +170,41 @@ def create_app(config_class=Config):
                 return redirect(request.url)
 
         return render_template('postman.html', show_analysis=False)
+
+    @app.route('/generate_jmx_with_claude', methods=['POST'])
+    def generate_jmx_with_claude():
+        # Get the filename from session that was stored during analysis
+        if 'analyzed_file' not in session:
+            return jsonify({"error": "No analyzed file found. Please analyze the collection first."}), 400
+
+        filename = session['analyzed_file']
+        upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+        try:
+            # Verify the file still exists
+            if not os.path.exists(upload_path):
+                return jsonify({"error": "Analyzed file no longer available. Please upload again."}), 400
+
+            # Analyze the collection for correlations
+            with open(upload_path, 'r', encoding='utf-8') as f:
+                postman_json = json.load(f)
+
+            correlation_data = analyze_postman_collection(upload_path)
+
+            # Generate JMX with Claude
+            jmx_path = ask_claude_for_jmx(postman_json, correlation_data)
+
+            # Return the generated JMX file
+            return send_file(
+                jmx_path,
+                as_attachment=True,
+                download_name=f"claude_{filename.replace('.json', '.jmx')}",
+                mimetype='application/xml'
+            )
+
+        except Exception as e:
+            app.logger.error(f"Error in JMX generation: {str(e)}")
+            return jsonify({"error": str(e)}), 500
 
     @app.errorhandler(413)
     def request_entity_too_large(error):
