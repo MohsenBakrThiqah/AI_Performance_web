@@ -1,11 +1,89 @@
 import re
 import json
 from lxml import etree as ET
-import os
+
+
+def is_valid_xml_char(codepoint):
+    return (
+        codepoint == 0x9 or
+        codepoint == 0xA or
+        codepoint == 0xD or
+        (0x20 <= codepoint <= 0xD7FF) or
+        (0xE000 <= codepoint <= 0xFFFD) or
+        (0x10000 <= codepoint <= 0x10FFFF)
+    )
+
+
+def remove_invalid_xml_references(text):
+    def replace_entity(match):
+        ref = match.group(1)
+        try:
+            codepoint = int(ref, 16) if ref.lower().startswith('x') else int(ref)
+            return '' if not is_valid_xml_char(codepoint) else chr(codepoint)
+        except ValueError:
+            return ''
+    return re.sub(r'&#(x?[0-9A-Fa-f]+);', replace_entity, text)
+
+
+def clean_and_parse_xml(filepath):
+    with open(filepath, 'rb') as f:
+        raw = f.read()
+
+    decoded = raw.decode('utf-8', errors='ignore')
+    cleaned = remove_invalid_xml_references(decoded)
+    return ET.fromstring(cleaned.encode('utf-8'))
+
+
+def flatten_json(y, parent_key='', sep='.'):
+    items = {}
+    if isinstance(y, dict):
+        for k, v in y.items():
+            new_key = f"{parent_key}{sep}{k}" if parent_key else k
+            if isinstance(v, (dict, list)):
+                items.update(flatten_json(v, new_key, sep=sep))
+            else:
+                items[new_key] = str(v)
+    elif isinstance(y, list):
+        for i, v in enumerate(y):
+            new_key = f"{parent_key}{sep}{i}" if parent_key else str(i)
+            if isinstance(v, (dict, list)):
+                items.update(flatten_json(v, new_key, sep=sep))
+            else:
+                items[new_key] = str(v)
+    return items
+
+
+def extract_params(text):
+    params = {}
+    if not text:
+        return params
+    pairs = re.findall(r'([\w\.-]+)=([^&]*)', text)
+    if pairs:
+        for key, value in pairs:
+            params[key] = value
+        return params
+    try:
+        json_data = json.loads(text)
+        params.update(flatten_json(json_data))
+    except Exception:
+        pass
+    return params
+
+
+def normalize_url(url):
+    return url.replace('https://', '').replace('http://', '').strip().lower()
+
+
+def url_matches_filter(request_url, filters):
+    normalized_request = normalize_url(request_url)
+    for filter_val in filters:
+        normalized_filter = normalize_url(filter_val)
+        if normalized_filter in normalized_request:
+            return True
+    return False
 
 
 def analyze_jmeter_correlations(xml_path, url_filter=''):
-    """Analyze JMeter XML for correlations"""
     requests = []
     responses = []
     all_previous_responses = []
@@ -37,63 +115,17 @@ def analyze_jmeter_correlations(xml_path, url_filter=''):
         for child in node:
             collect_samples(child)
 
-    def extract_params(text):
-        params = {}
-        if not text:
-            return params
-        pairs = re.findall(r'([\w\.-]+)=([^&]*)', text)
-        if pairs:
-            for key, value in pairs:
-                params[key] = value
-            return params
-        try:
-            json_data = json.loads(text)
-            params.update(flatten_json(json_data))
-        except Exception:
-            pass
-        return params
+    try:
+        root = clean_and_parse_xml(xml_path)
+    except Exception as e:
+        raise RuntimeError(f"Failed to parse cleaned XML: {e}")
 
-    def flatten_json(y, parent_key='', sep='.'):
-        items = {}
-        if isinstance(y, dict):
-            for k, v in y.items():
-                new_key = f"{parent_key}{sep}{k}" if parent_key else k
-                if isinstance(v, (dict, list)):
-                    items.update(flatten_json(v, new_key, sep=sep))
-                else:
-                    items[new_key] = str(v)
-        elif isinstance(y, list):
-            for i, v in enumerate(y):
-                new_key = f"{parent_key}{sep}{i}" if parent_key else str(i)
-                if isinstance(v, (dict, list)):
-                    items.update(flatten_json(v, new_key, sep=sep))
-                else:
-                    items[new_key] = str(v)
-        return items
-
-    def normalize_url(url):
-        return url.replace('https://', '').replace('http://', '').strip().lower()
-
-    def url_matches_filter(request_url, filters):
-        normalized_request = normalize_url(request_url)
-        for filter_val in filters:
-            normalized_filter = normalize_url(filter_val)
-            if normalized_filter in normalized_request:
-                return True
-        return False
-
-    # Parse XML
-    tree = ET.parse(xml_path)
-    root = tree.getroot()
     collect_samples(root)
 
-    # Prepare all responses
     all_previous_responses = [resp['responseHeader'] + '\n' + resp['responseBody'] for resp in responses]
 
-    # Process URL filters
     url_filters = [u.strip() for u in url_filter.split(',')] if url_filter else []
 
-    # Analyze correlations
     results = []
     for idx, req in enumerate(requests):
         if url_filters and not url_matches_filter(req['url'], url_filters):
@@ -111,30 +143,16 @@ def analyze_jmeter_correlations(xml_path, url_filter=''):
             if not param_value:
                 continue
 
-            first_found_idx = None
-            nearest_found_idx = None
-
-            # Find first occurrence
-            for resp_idx in range(0, idx):
-                if param_value in all_previous_responses[resp_idx]:
-                    first_found_idx = resp_idx
-                    break
-
-            # Find nearest occurrence
-            for resp_idx in range(idx - 1, -1, -1):
-                if param_value in all_previous_responses[resp_idx]:
-                    nearest_found_idx = resp_idx
-                    break
+            first_found_idx = next((i for i in range(idx) if param_value in all_previous_responses[i]), None)
+            nearest_found_idx = next((i for i in range(idx - 1, -1, -1) if param_value in all_previous_responses[i]), None)
 
             if first_found_idx is not None or nearest_found_idx is not None:
-                first_label = requests[first_found_idx]['label'] if first_found_idx is not None else 'N/A'
-                nearest_label = requests[nearest_found_idx]['label'] if nearest_found_idx is not None else 'N/A'
                 param_details.append({
                     'param': param_name,
                     'value': param_value,
                     'correlated': True,
-                    'first_source': first_label,
-                    'nearest_source': nearest_label
+                    'first_source': requests[first_found_idx]['label'] if first_found_idx is not None else 'N/A',
+                    'nearest_source': requests[nearest_found_idx]['label'] if nearest_found_idx is not None else 'N/A'
                 })
             else:
                 param_details.append({
