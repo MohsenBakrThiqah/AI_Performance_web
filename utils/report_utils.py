@@ -84,7 +84,7 @@ def edit_html_and_js(html_path, js_path, stats_path, form_data):
         # Add other HTML modifications
         modified_html = modified_html.replace("Apache JMeter Dashboard",
                                               f"THIQAH Confidential: {form_data['project_name']} Performance Test Report")
-        print(os.path.join(os.getcwd(), "static", "images", "Cover.png"))
+        # print(os.path.join(os.getcwd(), "static", "images", "Cover.png"))
         modified_html = modified_html.replace("</title>",
                                               "</title><img src=\"" + os.path.join(os.getcwd(), "static", "images", "Cover.png") + "\" alt=\"Cover Image\" style=\"width: "
                                                                                 "100%; height: 100vh; object-fit: cover; "
@@ -119,7 +119,7 @@ def edit_html_and_js(html_path, js_path, stats_path, form_data):
         # Add findings
         findings = [v for k, v in form_data.items() if k.startswith('finding_') and v]
         findings_html = "<br>".join([f"{i + 1}. {finding}" for i, finding in enumerate(findings)])
-        print(findings_html)
+        # print(findings_html)
         modified_html = re.sub(
             r'<tr>\s*<td>Findings</td>\s*<td>""</td>\s*</tr>',
             f'<tr><td>Findings</td><td>{findings_html}</td></tr>',
