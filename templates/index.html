@@ -37,9 +37,9 @@
                         <div class="feature-icon bg-primary bg-gradient rounded-circle p-3 mb-3 mx-auto">
                             <i class="bi bi-speedometer2 text-white fs-2"></i>
                         </div>
-                        <h3 class="h4">Automated Reporting</h3>
+                        <h3 class="h4">AI Automated Reporting</h3>
                         <p class="text-muted">
-                            Generate professional test reports with compliance analysis,
+                            Powered by AI, Generate professional test reports with compliance analysis,
                             findings, and recommendations in minutes.
                         </p>
                         <a href="{{ url_for('report_generator') }}" class="btn btn-sm btn-outline-primary">
@@ -55,7 +55,7 @@
                         <div class="feature-icon bg-success bg-gradient rounded-circle p-3 mb-3 mx-auto">
                             <i class="bi bi-arrow-left-right text-white fs-2"></i>
                         </div>
-                        <h3 class="h4">Correlation Finder</h3>
+                        <h3 class="h4">AI Correlation Finder</h3>
                         <p class="text-muted">
                             Automatically identify dynamic parameters that need correlation
                             in your JMeter test scripts.
@@ -73,7 +73,7 @@
                         <div class="feature-icon bg-info bg-gradient rounded-circle p-3 mb-3 mx-auto">
                             <i class="bi bi-postcard text-white fs-2"></i>
                         </div>
-                        <h3 class="h4">Postman Converter</h3>
+                        <h3 class="h4">AI Postman Converter</h3>
                         <p class="text-muted">
                             Convert Postman collections to JMeter JMX files with automatic
                             correlation detection.
@@ -87,57 +87,6 @@
         </div>
     </section>
 
-    <!-- Quick Actions Section -->
-    <section class="py-5 bg-light rounded-3 my-5">
-        <div class="container">
-            <h2 class="text-center mb-5">Quick Actions</h2>
-            <div class="row g-4">
-                <div class="col-md-3 col-6">
-                    <a href="{{ url_for('report_generator') }}" class="text-decoration-none">
-                        <div class="card h-100 border-0 text-center hover-shadow">
-                            <div class="card-body">
-                                <i class="bi bi-file-earmark-bar-graph fs-1 text-primary"></i>
-                                <h5 class="mt-3">New Report</h5>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-
-                <div class="col-md-3 col-6">
-                    <a href="{{ url_for('correlations') }}" class="text-decoration-none">
-                        <div class="card h-100 border-0 text-center hover-shadow">
-                            <div class="card-body">
-                                <i class="bi bi-diagram-2 fs-1 text-success"></i>
-                                <h5 class="mt-3">Find Correlations</h5>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-
-                <div class="col-md-3 col-6">
-                    <a href="{{ url_for('postman_tools') }}" class="text-decoration-none">
-                        <div class="card h-100 border-0 text-center hover-shadow">
-                            <div class="card-body">
-                                <i class="bi bi-postcard fs-1 text-info"></i>
-                                <h5 class="mt-3">Postman Import</h5>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-
-                <div class="col-md-3 col-6">
-                    <a href="#" class="text-decoration-none">
-                        <div class="card h-100 border-0 text-center hover-shadow">
-                            <div class="card-body">
-                                <i class="bi bi-question-circle fs-1 text-warning"></i>
-                                <h5 class="mt-3">Documentation</h5>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </section>
 
     <!-- Recent Activity Section -->
     <section class="py-5">
