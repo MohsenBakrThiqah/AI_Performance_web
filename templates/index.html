@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}THIQAH AI Performance Assistant{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Hero Section -->
+    <div class="row align-items-center mb-5">
+        <div class="col-md-6">
+            <h1 class="display-4 fw-bold mb-3">JMeter Test Automation</h1>
+            <p class="lead mb-4">
+                Streamline your performance testing workflow with AI-powered analysis,
+                automated reporting, and intelligent correlation detection.
+            </p>
+            <div class="d-flex gap-3">
+                <a href="{{ url_for('report_generator') }}" class="btn btn-primary btn-lg">
+                    <i class="bi bi-file-earmark-bar-graph"></i> Generate Report
+                </a>
+                <a href="#features" class="btn btn-outline-primary btn-lg">
+                    <i class="bi bi-info-circle"></i> Learn More
+                </a>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <img src="{{ url_for('static', filename='images/jmeter-dashboard.png') }}"
+                 alt="JMeter Dashboard" class="img-fluid rounded shadow">
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <section id="features" class="py-5">
+        <h2 class="text-center mb-5">Key Features</h2>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon bg-primary bg-gradient rounded-circle p-3 mb-3 mx-auto">
+                            <i class="bi bi-speedometer2 text-white fs-2"></i>
+                        </div>
+                        <h3 class="h4">Automated Reporting</h3>
+                        <p class="text-muted">
+                            Generate professional test reports with compliance analysis,
+                            findings, and recommendations in minutes.
+                        </p>
+                        <a href="{{ url_for('report_generator') }}" class="btn btn-sm btn-outline-primary">
+                            Try Report Generator
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon bg-success bg-gradient rounded-circle p-3 mb-3 mx-auto">
+                            <i class="bi bi-arrow-left-right text-white fs-2"></i>
+                        </div>
+                        <h3 class="h4">Correlation Finder</h3>
+                        <p class="text-muted">
+                            Automatically identify dynamic parameters that need correlation
+                            in your JMeter test scripts.
+                        </p>
+                        <a href="{{ url_for('correlations') }}" class="btn btn-sm btn-outline-success">
+                            Find Correlations
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon bg-info bg-gradient rounded-circle p-3 mb-3 mx-auto">
+                            <i class="bi bi-postcard text-white fs-2"></i>
+                        </div>
+                        <h3 class="h4">Postman Converter</h3>
+                        <p class="text-muted">
+                            Convert Postman collections to JMeter JMX files with automatic
+                            correlation detection.
+                        </p>
+                        <a href="{{ url_for('postman_tools') }}" class="btn btn-sm btn-outline-info">
+                            Convert Collections
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Actions Section -->
+    <section class="py-5 bg-light rounded-3 my-5">
+        <div class="container">
+            <h2 class="text-center mb-5">Quick Actions</h2>
+            <div class="row g-4">
+                <div class="col-md-3 col-6">
+                    <a href="{{ url_for('report_generator') }}" class="text-decoration-none">
+                        <div class="card h-100 border-0 text-center hover-shadow">
+                            <div class="card-body">
+                                <i class="bi bi-file-earmark-bar-graph fs-1 text-primary"></i>
+                                <h5 class="mt-3">New Report</h5>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-md-3 col-6">
+                    <a href="{{ url_for('correlations') }}" class="text-decoration-none">
+                        <div class="card h-100 border-0 text-center hover-shadow">
+                            <div class="card-body">
+                                <i class="bi bi-diagram-2 fs-1 text-success"></i>
+                                <h5 class="mt-3">Find Correlations</h5>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-md-3 col-6">
+                    <a href="{{ url_for('postman_tools') }}" class="text-decoration-none">
+                        <div class="card h-100 border-0 text-center hover-shadow">
+                            <div class="card-body">
+                                <i class="bi bi-postcard fs-1 text-info"></i>
+                                <h5 class="mt-3">Postman Import</h5>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-md-3 col-6">
+                    <a href="#" class="text-decoration-none">
+                        <div class="card h-100 border-0 text-center hover-shadow">
+                            <div class="card-body">
+                                <i class="bi bi-question-circle fs-1 text-warning"></i>
+                                <h5 class="mt-3">Documentation</h5>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Recent Activity Section -->
+    <section class="py-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Recent Activity</h2>
+            <a href="#" class="btn btn-sm btn-outline-secondary">View All</a>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="bi bi-file-earmark-text text-primary me-2"></i>
+                            <span>Performance Test Report - Portal API v2.3</span>
+                        </div>
+                        <small class="text-muted">2 hours ago</small>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="bi bi-postcard text-info me-2"></i>
+                            <span>Converted "Customer API Collection" to JMX</span>
+                        </div>
+                        <small class="text-muted">Yesterday</small>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="bi bi-diagram-2 text-success me-2"></i>
+                            <span>Found 12 correlations in Checkout Flow</span>
+                        </div>
+                        <small class="text-muted">2 days ago</small>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="bi bi-file-earmark-text text-primary me-2"></i>
+                            <span>Load Test Report - Payment Service</span>
+                        </div>
+                        <small class="text-muted">1 week ago</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Getting Started Section -->
+    <section class="py-5 bg-dark text-white rounded-3">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h2>Ready to get started?</h2>
+                    <p class="lead mb-0">
+                        Begin creating professional performance test reports in minutes,
+                        not hours.
+                    </p>
+                </div>
+                <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                    <a href="{{ url_for('report_generator') }}" class="btn btn-light btn-lg">
+                        <i class="bi bi-rocket"></i> Launch Now
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .feature-icon {
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .hover-shadow {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .hover-shadow:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+
+    .hero-section {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 16px;
+    }
+</style>
+{% endblock %}

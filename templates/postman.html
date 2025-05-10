@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+
+{% block title %}Postman Collection Tools{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-sm mb-5">
+                <div class="card-header bg-info text-white">
+                    <h2 class="mb-0">Postman Collection Tools</h2>
+                </div>
+                <div class="card-body">
+                    <ul class="nav nav-tabs mb-4" id="postmanTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="analyze-tab" data-bs-toggle="tab"
+                                    data-bs-target="#analyze" type="button" role="tab">
+                                <i class="bi bi-search"></i> Analyze Collection
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="convert-tab" data-bs-toggle="tab"
+                                    data-bs-target="#convert" type="button" role="tab">
+                                <i class="bi bi-file-earmark-arrow-down"></i> Convert to JMX
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="postmanTabContent">
+                        <!-- Analyze Tab -->
+                        <div class="tab-pane fade show active" id="analyze" role="tabpanel">
+                            <form method="post" enctype="multipart/form-data" action="{{ url_for('postman_tools') }}">
+                                <input type="hidden" name="action" value="analyze">
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Analyze Postman Collection</h4>
+                                    <p class="text-muted">
+                                        Upload your Postman collection JSON to identify dynamic parameters
+                                        that need correlation in JMeter.
+                                    </p>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="postman_file" class="form-label">Postman Collection File</label>
+                                    <input class="form-control" type="file" id="postman_file" name="postman_file"
+                                           accept=".json" required>
+                                    <div class="form-text">
+                                        Export your collection from Postman as a v2.1 JSON file
+                                    </div>
+                                </div>
+
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <button type="submit" class="btn btn-info">
+                                        <i class="bi bi-search"></i> Analyze Collection
+                                    </button>
+                                </div>
+                            </form>
+
+                            {% if show_analysis and analysis %}
+                            <div class="mt-5 fade-in">
+                                <h4 class="mb-4">Analysis Results</h4>
+                                <div class="alert alert-info">
+                                    Found {{ analysis.requests|length }} request{% if analysis.requests|length != 1 %}s{% endif %}
+                                    in collection "{{ analysis.collection_name }}"
+                                </div>
+
+                                <div class="accordion" id="analysisAccordion">
+                                    {% for request in analysis.requests %}
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="heading{{ loop.index }}">
+                                            <button class="accordion-button {% if not loop.first %}collapsed{% endif %}"
+                                                    type="button" data-bs-toggle="collapse"
+                                                    data-bs-target="#collapse{{ loop.index }}"
+                                                    aria-expanded="{{ 'true' if loop.first else 'false' }}">
+                                                <span class="badge bg-{{ 'primary' if request.parameters else 'secondary' }} me-2">
+                                                    {{ request.method }}
+                                                </span>
+                                                {{ request.request }}
+                                            </button>
+                                        </h2>
+                                        <div id="collapse{{ loop.index }}"
+                                             class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
+                                             aria-labelledby="heading{{ loop.index }}"
+                                             data-bs-parent="#analysisAccordion">
+                                            <div class="accordion-body">
+                                                <div class="mb-2">
+                                                    <strong>URL:</strong>
+                                                    <a href="{{ request.url }}" target="_blank">{{ request.url }}</a>
+                                                </div>
+
+                                                {% if request.parameters %}
+                                                    <h5 class="mt-3">Parameters</h5>
+                                                    <div class="table-responsive">
+                                                        <table class="table table-sm">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Parameter</th>
+                                                                    <th>Type</th>
+                                                                    <th>Value</th>
+                                                                    <th>Source</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {% for param in request.parameters %}
+                                                                <tr>
+                                                                    <td><code>{{ param.param }}</code></td>
+                                                                    <td>
+                                                                        {% if param.correlate %}
+                                                                            <span class="badge bg-success">Correlated</span>
+                                                                        {% else %}
+                                                                            <span class="badge bg-secondary">Static</span>
+                                                                        {% endif %}
+                                                                    </td>
+                                                                    <td class="text-truncate" style="max-width: 150px;">
+                                                                        {{ param.value }}
+                                                                    </td>
+                                                                    <td>
+                                                                        {% if param.correlate %}
+                                                                            {{ param.source }}
+                                                                            <div class="mt-1">
+                                                                                <small class="text-muted">JSONPath:</small>
+                                                                                <code class="d-block">{{ param.jsonpath }}</code>
+                                                                            </div>
+                                                                        {% else %}
+                                                                            N/A
+                                                                        {% endif %}
+                                                                    </td>
+                                                                </tr>
+                                                                {% endfor %}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                {% else %}
+                                                    <div class="alert alert-light">
+                                                        No parameters found in this request
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+
+                                <div class="card mt-4 border-info">
+                                    <div class="card-header bg-info text-white">
+                                        <h5 class="mb-0">How to implement these correlations</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <ol class="mb-3">
+                                            <li>For each correlated parameter, add a JSON Extractor in JMeter</li>
+                                            <li>Use the provided JSONPath expression to extract the value</li>
+                                            <li>Reference the extracted value in subsequent requests using <code>${variable_name}</code></li>
+                                        </ol>
+                                        <div class="alert alert-warning mb-0">
+                                            <i class="bi bi-exclamation-triangle"></i> Always verify correlations by running
+                                            your test plan with 1 user first.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Convert Tab -->
+                        <div class="tab-pane fade" id="convert" role="tabpanel">
+                            <form method="post" enctype="multipart/form-data" action="{{ url_for('postman_tools') }}">
+                                <input type="hidden" name="action" value="convert">
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Convert to JMeter JMX</h4>
+                                    <p class="text-muted">
+                                        Convert your Postman collection directly to a JMeter test plan (JMX file)
+                                        with automatic handling of correlations.
+                                    </p>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="postman_file_convert" class="form-label">Postman Collection File</label>
+                                    <input class="form-control" type="file" id="postman_file_convert"
+                                           name="postman_file" accept=".json" required>
+                                    <div class="form-text">
+                                        Export your collection from Postman as a v2.1 JSON file
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="enable_gpt" name="enable_gpt">
+                                        <label class="form-check-label" for="enable_gpt">
+                                            Use AI to enhance conversion (GPT-4)
+                                        </label>
+                                        <div class="form-text">
+                                            Experimental: Uses OpenAI to generate more accurate JMX with better correlation handling
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-file-earmark-arrow-down"></i> Convert to JMX
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h4 class="mb-0">Postman Collection Tips</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5><i class="bi bi-check-circle text-success"></i> Do</h5>
+                            <ul class="list-group list-group-flush mb-4">
+                                <li class="list-group-item">
+                                    <i class="bi bi-check text-success"></i> Export as Collection v2.1
+                                </li>
+                                <li class="list-group-item">
+                                    <i class="bi bi-check text-success"></i> Include example responses
+                                </li>
+                                <li class="list-group-item">
+                                    <i class="bi bi-check text-success"></i> Use environment variables for dynamic values
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5><i class="bi bi-x-circle text-danger"></i> Don't</h5>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item">
+                                    <i class="bi bi-x text-danger"></i> Use the legacy v1.0 format
+                                </li>
+                                <li class="list-group-item">
+                                    <i class="bi bi-x text-danger"></i> Include binary file uploads
+                                </li>
+                                <li class="list-group-item">
+                                    <i class="bi bi-x text-danger"></i> Use scripts that require Postman Sandbox
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .accordion-button:not(.collapsed) {
+        background-color: rgba(13, 110, 253, 0.05);
+        color: #0d6efd;
+    }
+
+    .fade-in {
+        animation: fadeIn 0.5s ease-in;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .nav-tabs .nav-link {
+        border: none;
+        border-bottom: 3px solid transparent;
+        color: #495057;
+        font-weight: 500;
+    }
+
+    .nav-tabs .nav-link.active {
+        border-bottom-color: #0dcaf0;
+        color: #0dcaf0;
+        background-color: transparent;
+    }
+
+    .nav-tabs .nav-link:hover:not(.active) {
+        border-bottom-color: #dee2e6;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize clipboard for JSONPath examples
+    const clipboard = new ClipboardJS('.copy-jsonpath', {
+        text: function(trigger) {
+            return trigger.getAttribute('data-jsonpath');
+        }
+    });
+
+    clipboard.on('success', function(e) {
+        const tooltip = bootstrap.Tooltip.getInstance(e.trigger);
+        if (tooltip) {
+            e.trigger.setAttribute('data-bs-original-title', 'Copied!');
+            tooltip.show();
+            setTimeout(function() {
+                e.trigger.setAttribute('data-bs-original-title', 'Copy to clipboard');
+                tooltip.hide();
+            }, 2000);
+        }
+        e.clearSelection();
+    });
+
+    // Store active tab in localStorage
+    const postmanTabs = document.getElementById('postmanTabs');
+    if (postmanTabs) {
+        postmanTabs.addEventListener('click', function(e) {
+            if (e.target.classList.contains('nav-link')) {
+                localStorage.setItem('postmanActiveTab', e.target.id);
+            }
+        });
+
+        const activeTab = localStorage.getItem('postmanActiveTab');
+        if (activeTab) {
+            const tab = new bootstrap.Tab(document.getElementById(activeTab));
+            tab.show();
+        }
+    }
+
+    // Enhance parameter tables
+    document.querySelectorAll('.table-responsive').forEach(tableWrapper => {
+        tableWrapper.addEventListener('mouseenter', function() {
+            this.style.overflowX = 'auto';
+        });
+
+        tableWrapper.addEventListener('mouseleave', function() {
+            this.style.overflowX = 'hidden';
+        });
+    });
+});
+</script>
+{% endblock %}

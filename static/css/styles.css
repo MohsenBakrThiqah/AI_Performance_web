@@ -1,0 +1,304 @@
+/* Base Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* Navbar Styles */
+.navbar {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 0.75rem 1rem;
+}
+
+.navbar-brand {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.navbar-brand img {
+    margin-right: 10px;
+}
+
+/* Card Styles */
+.card {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    margin-bottom: 20px;
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.card-header {
+    background-color: #0d6efd;
+    color: white;
+    border-radius: 8px 8px 0 0 !important;
+    padding: 12px 20px;
+    font-weight: 600;
+}
+
+/* Form Styles */
+.form-control, .form-select {
+    border-radius: 4px;
+    padding: 10px 15px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.form-label {
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+/* Button Styles */
+.btn-primary {
+    background-color: #0d6efd;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+/* Alert Styles */
+.alert {
+    border-radius: 4px;
+    padding: 12px 16px;
+}
+
+/* Progress Bar */
+.progress {
+    height: 8px;
+    border-radius: 4px;
+}
+
+.progress-bar {
+    background-color: #0d6efd;
+}
+
+/* Table Styles */
+.table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.table td, .table th {
+    padding: 12px 15px;
+    vertical-align: middle;
+    border-top: 1px solid #dee2e6;
+}
+
+/* Results Table Specific */
+#resultsTable {
+    margin-top: 20px;
+}
+
+#resultsTable tr:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+/* Correlation Results Styles */
+.correlation-result {
+    margin-bottom: 15px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border-left: 4px solid #0d6efd;
+}
+
+.correlation-param {
+    padding: 8px 12px;
+    margin: 5px 0;
+    background-color: white;
+    border-radius: 4px;
+    border: 1px solid #eee;
+}
+
+.correlated {
+    border-left: 4px solid #198754;
+}
+
+.static {
+    border-left: 4px solid #6c757d;
+}
+
+.jsonpath {
+    font-family: monospace;
+    background-color: #f8f9fa;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .card-body {
+        padding: 15px;
+    }
+
+    .form-control, .form-select {
+        padding: 8px 12px;
+    }
+
+    .navbar-brand {
+        font-size: 1rem;
+    }
+}
+
+/* Animation for loading */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+/* GPT Analysis Section */
+.gpt-analysis {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+    border-left: 4px solid #0d6efd;
+}
+
+.gpt-analysis h3 {
+    color: #0d6efd;
+    margin-bottom: 15px;
+}
+
+/* Footer Styles */
+footer {
+    margin-top: 40px;
+    padding: 20px 0;
+    background-color: #f8f9fa;
+    text-align: center;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #0d6efd;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #0b5ed7;
+}
+
+/* Tab Styles */
+.nav-tabs .nav-link {
+    color: #495057;
+    font-weight: 500;
+    border: none;
+    padding: 12px 20px;
+}
+
+.nav-tabs .nav-link.active {
+    color: #0d6efd;
+    background-color: transparent;
+    border-bottom: 3px solid #0d6efd;
+}
+
+.nav-tabs .nav-link:hover:not(.active) {
+    color: #0d6efd;
+    border-bottom: 3px solid #dee2e6;
+}
+
+/* Textarea Styles */
+textarea.form-control {
+    min-height: 120px;
+    resize: vertical;
+}
+
+/* File Input Customization */
+.form-control[type="file"] {
+    padding: 8px;
+}
+
+/* Badge Styles */
+.badge {
+    font-weight: 500;
+    padding: 5px 10px;
+}
+
+/* Tooltip Styles */
+.tooltip-inner {
+    max-width: 300px;
+    padding: 8px 12px;
+    background-color: #333;
+}
+
+/* Responsive Tables */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Custom checkbox alignment */
+.form-check {
+    padding-left: 2.5em;
+}
+
+.form-check-input {
+    margin-left: -2.5em;
+    margin-top: 0.3em;
+}
+
+/* Section Headers */
+.section-header {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #0d6efd;
+    margin: 20px 0 15px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+/* Parameter Highlight */
+.param-highlight {
+    background-color: #e7f1ff;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: monospace;
+}

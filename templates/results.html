@@ -1,0 +1,921 @@
+{% extends "base.html" %}
+
+{% block title %}Test Results - {{ project_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Report Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-6 mb-0">Performance Test Report</h1>
+                    <h2 class="text-muted fs-4">{{ project_name }}</h2>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-{{ 'success' if overall_status == 'Compliant' else 'danger' }} fs-6">
+                        {{ overall_status }}
+                    </span>
+                    <div class="text-muted small mt-1">{{ report_date }}</div>
+                </div>
+            </div>
+            <hr class="mt-2">
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 border-{{ 'success' if response_time_status == 'Compliant' else 'danger' }}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-subtitle mb-2 text-muted">Response Time</h6>
+                            <h3 class="card-title">{{ response_time_90th }} ms</h3>
+                        </div>
+                        <div class="icon-circle bg-{{ 'success' if response_time_status == 'Compliant' else 'danger' }}">
+                            <i class="bi bi-speedometer2 text-white"></i>
+                        </div>
+                    </div>
+                    <p class="card-text small">
+                        <span class="text-{{ 'success' if response_time_status == 'Compliant' else 'danger' }}">
+                            <i class="bi bi-{{ 'check-circle' if response_time_status == 'Compliant' else 'exclamation-circle' }}"></i>
+                            {{ response_time_status }} (Threshold: {{ response_time_threshold }} ms)
+                        </span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 border-{{ 'success' if error_rate_status == 'Compliant' else 'danger' }}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-subtitle mb-2 text-muted">Error Rate</h6>
+                            <h3 class="card-title">{{ error_rate }}%</h3>
+                        </div>
+                        <div class="icon-circle bg-{{ 'success' if error_rate_status == 'Compliant' else 'danger' }}">
+                            <i class="bi bi-bug text-white"></i>
+                        </div>
+                    </div>
+                    <p class="card-text small">
+                        <span class="text-{{ 'success' if error_rate_status == 'Compliant' else 'danger' }}">
+                            <i class="bi bi-{{ 'check-circle' if error_rate_status == 'Compliant' else 'exclamation-circle' }}"></i>
+                            {{ error_rate_status }} (Threshold: {{ error_rate_threshold }}%)
+                        </span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 border-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-subtitle mb-2 text-muted">Throughput</h6>
+                            <h3 class="card-title">{{ throughput }} req/s</h3>
+                        </div>
+                        <div class="icon-circle bg-primary">
+                            <i class="bi bi-graph-up text-white"></i>
+                        </div>
+                    </div>
+                    <p class="card-text small">
+                        <i class="bi bi-people"></i> {{ users }} concurrent users
+                        <span class="d-block"><i class="bi bi-clock"></i> {{ duration }} minutes</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Tabs -->
+    <div class="row">
+        <div class="col-12">
+            <ul class="nav nav-tabs" id="resultsTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="summary-tab" data-bs-toggle="tab"
+                            data-bs-target="#summary" type="button" role="tab">
+                        <i class="bi bi-card-text"></i> Summary
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="transactions-tab" data-bs-toggle="tab"
+                            data-bs-target="#transactions" type="button" role="tab">
+                        <i class="bi bi-list-ul"></i> Transactions
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="findings-tab" data-bs-toggle="tab"
+                            data-bs-target="#findings" type="button" role="tab">
+                        <i class="bi bi-search"></i> Findings
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="recommendations-tab" data-bs-toggle="tab"
+                            data-bs-target="#recommendations" type="button" role="tab">
+                        <i class="bi bi-lightbulb"></i> Recommendations
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="errors-tab" data-bs-toggle="tab"
+                            data-bs-target="#errors" type="button" role="tab">
+                        <i class="bi bi-exclamation-triangle"></i> Errors
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content p-3 border border-top-0 rounded-bottom" id="resultsTabContent">
+                <!-- Summary Tab -->
+                <div class="tab-pane fade show active" id="summary" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-4">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">Test Information</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <tbody>
+                                                <tr>
+                                                    <th scope="row">Test Engineer</th>
+                                                    <td>{{ engineer_name }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <th scope="row">Test Type</th>
+                                                    <td>{{ test_type }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <th scope="row">Environment</th>
+                                                    <td>{{ environment }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <th scope="row">Test Date</th>
+                                                    <td>{{ test_date }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <th scope="row">Test Duration</th>
+                                                    <td>{{ duration }} minutes</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card mb-4">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">Response Time Distribution</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="responseTimeChart" style="height: 300px;"></div>
+                                    <div class="mt-3 small text-muted">
+                                        <i class="bi bi-info-circle"></i> Shows distribution of response times across all transactions
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card mb-4">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">Performance Metrics</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="metricsChart" style="height: 300px;"></div>
+                                    <div class="mt-3 small text-muted">
+                                        <i class="bi bi-info-circle"></i> Key performance indicators throughout the test duration
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">Test Configuration</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <tbody>
+                                                <tr>
+                                                    <th scope="row">Concurrent Users</th>
+                                                    <td>{{ users }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <th scope="row">Ramp-Up Period</th>
+                                                    <td>{{ ramp_up }} minutes</td>
+                                                </tr>
+                                                <tr>
+                                                    <th scope="row">Test Scenario</th>
+                                                    <td>{{ test_scenario }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <th scope="row">Target URL</th>
+                                                    <td><a href="{{ target_url }}" target="_blank">{{ target_url }}</a></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transactions Tab -->
+                <div class="tab-pane fade" id="transactions" role="tabpanel">
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5>Transaction Performance</h5>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                        id="sortDropdown" data-bs-toggle="dropdown">
+                                    Sort by: {{ sort_by }}
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="sortDropdown">
+                                    <li><a class="dropdown-item" href="#">Response Time</a></li>
+                                    <li><a class="dropdown-item" href="#">Throughput</a></li>
+                                    <li><a class="dropdown-item" href="#">Error Rate</a></li>
+                                    <li><a class="dropdown-item" href="#">Alphabetical</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <p class="text-muted small">Detailed performance metrics for each transaction</p>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Transaction</th>
+                                    <th>90% Line (ms)</th>
+                                    <th>Avg (ms)</th>
+                                    <th>Throughput</th>
+                                    <th>Error %</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in transactions %}
+                                <tr class="{{ 'table-danger' if transaction.error_rate > error_rate_threshold else '' }}">
+                                    <td>
+                                        <strong>{{ transaction.name }}</strong>
+                                        <div class="small text-muted">{{ transaction.url }}</div>
+                                    </td>
+                                    <td class="{{ 'text-danger' if transaction.percentile_90 > response_time_threshold else 'text-success' }}">
+                                        {{ transaction.percentile_90 }}
+                                    </td>
+                                    <td>{{ transaction.average }}</td>
+                                    <td>{{ transaction.throughput }} req/s</td>
+                                    <td class="{{ 'text-danger' if transaction.error_rate > error_rate_threshold else 'text-success' }}">
+                                        {{ transaction.error_rate }}%
+                                    </td>
+                                    <td>
+                                        {% if transaction.error_rate > error_rate_threshold or transaction.percentile_90 > response_time_threshold %}
+                                            <span class="badge bg-danger">Failed</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Passed</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse"
+                                                data-bs-target="#details-{{ loop.index }}">
+                                            Details
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="collapse" id="details-{{ loop.index }}">
+                                    <td colspan="7">
+                                        <div class="p-3 bg-light rounded">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h6>Response Times</h6>
+                                                    <div class="table-responsive">
+                                                        <table class="table table-sm">
+                                                            <tbody>
+                                                                <tr>
+                                                                    <th>Min</th>
+                                                                    <td>{{ transaction.min }} ms</td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <th>Max</th>
+                                                                    <td>{{ transaction.max }} ms</td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <th>Median</th>
+                                                                    <td>{{ transaction.median }} ms</td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6>Additional Metrics</h6>
+                                                    <div class="table-responsive">
+                                                        <table class="table table-sm">
+                                                            <tbody>
+                                                                <tr>
+                                                                    <th>Requests</th>
+                                                                    <td>{{ transaction.requests }}</td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <th>Failures</th>
+                                                                    <td>{{ transaction.failures }}</td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <th>Received KB/sec</th>
+                                                                    <td>{{ transaction.received_kb_sec }}</td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Findings Tab -->
+                <div class="tab-pane fade" id="findings" role="tabpanel">
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Key Findings</h5>
+                        </div>
+                        <div class="card-body">
+                            <ol class="list-group list-group-numbered">
+                                {% for finding in findings %}
+                                <li class="list-group-item d-flex justify-content-between align-items-start">
+                                    <div class="ms-2 me-auto">
+                                        <div class="fw-bold">{{ finding.title }}</div>
+                                        {{ finding.description }}
+                                    </div>
+                                    <span class="badge bg-{{ finding.severity }} rounded-pill">
+                                        {{ finding.severity|capitalize }}
+                                    </span>
+                                </li>
+                                {% endfor %}
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Performance Issues</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Transaction</th>
+                                            <th>Issue</th>
+                                            <th>Impact</th>
+                                            <th>Threshold</th>
+                                            <th>Actual</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for issue in performance_issues %}
+                                        <tr>
+                                            <td>{{ issue.transaction }}</td>
+                                            <td>{{ issue.type }}</td>
+                                            <td>
+                                                <span class="badge bg-{{ issue.impact }}">
+                                                    {{ issue.impact|capitalize }}
+                                                </span>
+                                            </td>
+                                            <td>{{ issue.threshold }}</td>
+                                            <td class="text-{{ 'danger' if issue.exceeded else 'success' }}">
+                                                {{ issue.actual }}
+                                                {% if issue.exceeded %}
+                                                    <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recommendations Tab -->
+                <div class="tab-pane fade" id="recommendations" role="tabpanel">
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Optimization Recommendations</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="accordion" id="recommendationsAccordion">
+                                {% for recommendation in recommendations %}
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="heading{{ loop.index }}">
+                                        <button class="accordion-button collapsed" type="button"
+                                                data-bs-toggle="collapse" data-bs-target="#collapseRec{{ loop.index }}">
+                                            {{ recommendation.title }}
+                                            <span class="badge ms-2 bg-{{ recommendation.priority }}">
+                                                {{ recommendation.priority|capitalize }} Priority
+                                            </span>
+                                        </button>
+                                    </h2>
+                                    <div id="collapseRec{{ loop.index }}" class="accordion-collapse collapse"
+                                         data-bs-parent="#recommendationsAccordion">
+                                        <div class="accordion-body">
+                                            <p>{{ recommendation.description }}</p>
+                                            {% if recommendation.actions %}
+                                            <h6>Suggested Actions:</h6>
+                                            <ul>
+                                                {% for action in recommendation.actions %}
+                                                <li>{{ action }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                            {% endif %}
+                                            {% if recommendation.impact %}
+                                            <div class="alert alert-info mt-3">
+                                                <strong>Expected Impact:</strong> {{ recommendation.impact }}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if gpt_analysis %}
+                    <div class="card border-info">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">AI Analysis</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info">
+                                <i class="bi bi-robot"></i> The following analysis was generated by AI based on your test results
+                            </div>
+                            <div class="p-3 bg-light rounded">
+                                {{ gpt_analysis|safe }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Errors Tab -->
+                <div class="tab-pane fade" id="errors" role="tabpanel">
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Error Summary</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div id="errorDistributionChart" style="height: 300px;"></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Error Type</th>
+                                                    <th>Count</th>
+                                                    <th>% of Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for error in error_summary %}
+                                                <tr>
+                                                    <td>{{ error.type }}</td>
+                                                    <td>{{ error.count }}</td>
+                                                    <td>{{ error.percentage }}%</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Error Details</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Transaction</th>
+                                            <th>Error</th>
+                                            <th>Count</th>
+                                            <th>First Occurrence</th>
+                                            <th>Last Occurrence</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for error in error_details %}
+                                        <tr>
+                                            <td>{{ error.transaction }}</td>
+                                            <td>
+                                                <span class="badge bg-danger">{{ error.type }}</span>
+                                                <div class="small text-muted">{{ error.message }}</div>
+                                            </td>
+                                            <td>{{ error.count }}</td>
+                                            <td>{{ error.first_occurrence }}</td>
+                                            <td>{{ error.last_occurrence }}</td>
+                                            <td class="text-end">
+                                                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+                                                        data-bs-target="#errorModal{{ loop.index }}">
+                                                    Details
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Footer -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-light">
+                <div class="card-body text-center">
+                    <p class="mb-0 text-muted">
+                        Report generated on {{ report_date }} by THIQAH AI Performance Assistant
+                    </p>
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-outline-primary me-2">
+                            <i class="bi bi-download"></i> Download PDF
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-share"></i> Share Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Error Detail Modals -->
+{% for error in error_details %}
+<div class="modal fade" id="errorModal{{ loop.index }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Error Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Basic Information</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <tbody>
+                                    <tr>
+                                        <th>Transaction</th>
+                                        <td>{{ error.transaction }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Error Type</th>
+                                        <td>{{ error.type }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Occurrences</th>
+                                        <td>{{ error.count }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Timing</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <tbody>
+                                    <tr>
+                                        <th>First Occurrence</th>
+                                        <td>{{ error.first_occurrence }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Last Occurrence</th>
+                                        <td>{{ error.last_occurrence }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Duration</th>
+                                        <td>{{ error.duration }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <h6 class="mt-4">Error Details</h6>
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <pre class="mb-0"><code>{{ error.details }}</code></pre>
+                    </div>
+                </div>
+
+                {% if error.suggestions %}
+                <h6 class="mt-4">Troubleshooting Suggestions</h6>
+                <div class="alert alert-info">
+                    <ul class="mb-0">
+                        {% for suggestion in error.suggestions %}
+                        <li>{{ suggestion }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .icon-circle {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .accordion-button:not(.collapsed) {
+        background-color: rgba(13, 110, 253, 0.05);
+        color: #0d6efd;
+    }
+
+    .nav-tabs .nav-link {
+        border: none;
+        border-bottom: 3px solid transparent;
+        color: #495057;
+        font-weight: 500;
+    }
+
+    .nav-tabs .nav-link.active {
+        border-bottom-color: #0d6efd;
+        color: #0d6efd;
+        background-color: transparent;
+    }
+
+    .nav-tabs .nav-link:hover:not(.active) {
+        border-bottom-color: #dee2e6;
+    }
+
+    pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        font-family: monospace;
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 0.25rem;
+    }
+
+    .badge.bg-danger {
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize response time chart
+    const responseTimeCtx = document.getElementById('responseTimeChart').getContext('2d');
+    const responseTimeChart = new Chart(responseTimeCtx, {
+        type: 'bar',
+        data: {
+            labels: ['<100ms', '100-500ms', '500-1000ms', '1-2s', '2-5s', '>5s'],
+            datasets: [{
+                label: 'Transactions',
+                data: [12, 19, 8, 5, 2, 1],
+                backgroundColor: [
+                    'rgba(40, 167, 69, 0.7)',
+                    'rgba(40, 167, 69, 0.7)',
+                    'rgba(255, 193, 7, 0.7)',
+                    'rgba(255, 193, 7, 0.7)',
+                    'rgba(220, 53, 69, 0.7)',
+                    'rgba(220, 53, 69, 0.7)'
+                ],
+                borderColor: [
+                    'rgba(40, 167, 69, 1)',
+                    'rgba(40, 167, 69, 1)',
+                    'rgba(255, 193, 7, 1)',
+                    'rgba(255, 193, 7, 1)',
+                    'rgba(220, 53, 69, 1)',
+                    'rgba(220, 53, 69, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Transactions'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Response Time Range'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.parsed.y} transactions`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Initialize metrics chart
+    const metricsCtx = document.getElementById('metricsChart').getContext('2d');
+    const metricsChart = new Chart(metricsCtx, {
+        type: 'line',
+        data: {
+            labels: ['0', '5', '10', '15', '20', '25', '30'],
+            datasets: [
+                {
+                    label: 'Response Time (ms)',
+                    data: [120, 190, 300, 500, 200, 300, 450],
+                    borderColor: 'rgba(13, 110, 253, 1)',
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    tension: 0.4,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Throughput (req/s)',
+                    data: [10, 30, 50, 40, 60, 50, 40],
+                    borderColor: 'rgba(25, 135, 84, 1)',
+                    backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                    tension: 0.4,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Response Time (ms)'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Throughput (req/s)'
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Test Time (minutes)'
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += context.parsed.y;
+                                if (context.dataset.label.includes('Response')) {
+                                    label += 'ms';
+                                } else if (context.dataset.label.includes('Throughput')) {
+                                    label += ' req/s';
+                                }
+                            }
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Initialize error distribution chart
+    const errorCtx = document.getElementById('errorDistributionChart').getContext('2d');
+    const errorChart = new Chart(errorCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ error_types|safe }},
+            datasets: [{
+                data: {{ error_counts|safe }},
+                backgroundColor: [
+                    'rgba(220, 53, 69, 0.7)',
+                    'rgba(253, 126, 20, 0.7)',
+                    'rgba(255, 193, 7, 0.7)',
+                    'rgba(13, 110, 253, 0.7)',
+                    'rgba(111, 66, 193, 0.7)'
+                ],
+                borderColor: [
+                    'rgba(220, 53, 69, 1)',
+                    'rgba(253, 126, 20, 1)',
+                    'rgba(255, 193, 7, 1)',
+                    'rgba(13, 110, 253, 1)',
+                    'rgba(111, 66, 193, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = Math.round((value / total) * 100);
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Store active tab in localStorage
+    const resultsTabs = document.getElementById('resultsTabs');
+    if (resultsTabs) {
+        resultsTabs.addEventListener('click', function(e) {
+            if (e.target.classList.contains('nav-link')) {
+                localStorage.setItem('resultsActiveTab', e.target.id);
+            }
+        });
+
+        const activeTab = localStorage.getItem('resultsActiveTab');
+        if (activeTab) {
+            const tab = new bootstrap.Tab(document.getElementById(activeTab));
+            tab.show();
+        }
+    }
+});
+</script>
+{% endblock %}

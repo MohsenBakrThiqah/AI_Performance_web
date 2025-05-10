@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Report Generator{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h2>JMeter Report Generator</h2>
+    </div>
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data" action="{{ url_for('report_generator') }}">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-header">Workload Model</div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="project_name" class="form-label">Project Name</label>
+                                <input type="text" class="form-control" id="project_name" name="project_name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="test_round" class="form-label">Test Round #</label>
+                                <select class="form-select" id="test_round" name="test_round" required>
+                                    {% for i in range(1, 11) %}
+                                    <option value="{{ i }}">{{ i }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="performance_test_type" class="form-label">Performance Test Type</label>
+                                <select class="form-select" id="performance_test_type" name="performance_test_type" required>
+                                    <option value="Baseline">Baseline</option>
+                                    <option value="Load">Load</option>
+                                    <option value="Stress">Stress</option>
+                                    <option value="Spike">Spike</option>
+                                    <option value="Volume">Volume</option>
+                                    <option value="Endurance">Endurance</option>
+                                    <option value="Benchmark">Benchmark</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="cu" class="form-label">Number of CUs</label>
+                                <input type="text" class="form-control" id="cu" name="cu" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="ramp_up" class="form-label">Ramp Up in minutes</label>
+                                <input type="text" class="form-control" id="ramp_up" name="ramp_up" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="duration" class="form-label">Duration in minutes</label>
+                                <input type="text" class="form-control" id="duration" name="duration" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="url" class="form-label">URL Under Test</label>
+                                <input type="text" class="form-control" id="url" name="url" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-header">Results</div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="engineer_name" class="form-label">Report Creator Name</label>
+                                <input type="text" class="form-control" id="engineer_name" name="engineer_name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="round_status" class="form-label">Test Round Results</label>
+                                <select class="form-select" id="round_status" name="round_status" required>
+                                    <option value="Compliant">Compliant</option>
+                                    <option value="Not Compliant">Not Compliant</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="web_trans_status" class="form-label">Web Transactions Compliant?</label>
+                                <select class="form-select" id="web_trans_status" name="web_trans_status" required>
+                                    <option value="Y">Yes</option>
+                                    <option value="N">No</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="api_trans_status" class="form-label">API Transactions Compliant?</label>
+                                <select class="form-select" id="api_trans_status" name="api_trans_status" required>
+                                    <option value="Y">Yes</option>
+                                    <option value="N">No</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="error_rate_status" class="form-label">Error % Compliant?</label>
+                                <select class="form-select" id="error_rate_status" name="error_rate_status" required>
+                                    <option value="Y">Yes</option>
+                                    <option value="N">No</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="api_threshold" class="form-label">API 90% Threshold (ms)</label>
+                                <input type="text" class="form-control" id="api_threshold" name="api_threshold" value="1000" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="err_rate_threshold" class="form-label">Error % Threshold</label>
+                                <input type="text" class="form-control" id="err_rate_threshold" name="err_rate_threshold" value="3" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-header">Azure Details</div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="new_bugs" class="form-label">Azure New Bugs IDs</label>
+                                <input type="text" class="form-control" id="new_bugs" name="new_bugs">
+                            </div>
+                            <div class="mb-3">
+                                <label for="reopened_bugs" class="form-label">Azure Reopened Bugs IDs</label>
+                                <input type="text" class="form-control" id="reopened_bugs" name="reopened_bugs">
+                            </div>
+                            <div class="mb-3">
+                                <label for="release_report" class="form-label">Azure Release Report</label>
+                                <input type="text" class="form-control" id="release_report" name="release_report">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-header">Test Scope</div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <textarea class="form-control" id="scope" name="scope" rows="5" required></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header">Findings</div>
+                <div class="card-body">
+                    {% for i in range(1, 13) %}
+                    <div class="mb-3">
+                        <label for="finding_{{ i }}" class="form-label">Finding {{ i }}</label>
+                        <input type="text" class="form-control" id="finding_{{ i }}" name="finding_{{ i }}">
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="report_folder" class="form-label">JMeter Report Folder (ZIP)</label>
+                <input class="form-control" type="file" id="report_folder" name="report_folder" required>
+            </div>
+
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="use_gpt" name="use_gpt">
+                <label class="form-check-label" for="use_gpt">Analyze results with GPT-4</label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Generate Report</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

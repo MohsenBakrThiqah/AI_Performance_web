@@ -1,0 +1,198 @@
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Bootstrap tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Form submission handling with loading indicators
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = `
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    Processing...
+                `;
+            }
+        });
+    });
+
+    // Tab persistence
+    const tabEls = document.querySelectorAll('button[data-bs-toggle="tab"]');
+    tabEls.forEach(tabEl => {
+        tabEl.addEventListener('click', function() {
+            localStorage.setItem('activeTab', this.getAttribute('data-bs-target'));
+        });
+    });
+
+    const activeTab = localStorage.getItem('activeTab');
+    if (activeTab) {
+        const tab = new bootstrap.Tab(document.querySelector(`[data-bs-target="${activeTab}"]`));
+        tab.show();
+    }
+
+    // Dynamic form field handling for findings
+    const findingsContainer = document.getElementById('findingsContainer');
+    if (findingsContainer) {
+        // Add new finding field
+        document.getElementById('addFindingBtn').addEventListener('click', function() {
+            const findingCount = document.querySelectorAll('.finding-field').length + 1;
+            const newField = document.createElement('div');
+            newField.className = 'mb-3 finding-field';
+            newField.innerHTML = `
+                <label for="finding_${findingCount}" class="form-label">Finding ${findingCount}</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="finding_${findingCount}" name="finding_${findingCount}">
+                    <button type="button" class="btn btn-outline-danger remove-finding" data-bs-toggle="tooltip" title="Remove finding">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `;
+            findingsContainer.appendChild(newField);
+
+            // Initialize tooltip for new button
+            new bootstrap.Tooltip(newField.querySelector('.remove-finding'));
+        });
+
+        // Remove finding field
+        findingsContainer.addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-finding') || e.target.closest('.remove-finding')) {
+                const fieldToRemove = e.target.closest('.finding-field');
+                if (fieldToRemove) {
+                    fieldToRemove.remove();
+                    // Renumber remaining fields
+                    const remainingFields = document.querySelectorAll('.finding-field');
+                    remainingFields.forEach((field, index) => {
+                        const label = field.querySelector('label');
+                        const input = field.querySelector('input');
+                        const newNum = index + 1;
+                        label.textContent = `Finding ${newNum}`;
+                        label.htmlFor = `finding_${newNum}`;
+                        input.id = `finding_${newNum}`;
+                        input.name = `finding_${newNum}`;
+                    });
+                }
+            }
+        });
+    }
+
+    // File upload preview and validation
+    const fileInputs = document.querySelectorAll('input[type="file"]');
+    fileInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            const file = this.files[0];
+            if (!file) return;
+
+            const feedbackEl = document.createElement('div');
+            feedbackEl.className = 'mt-2 small';
+
+            // Check file size
+            const maxSize = this.getAttribute('data-max-size') || 16777216; // Default 16MB
+            if (file.size > maxSize) {
+                feedbackEl.className += ' text-danger';
+                feedbackEl.textContent = `File too large (max ${formatFileSize(maxSize)})`;
+                this.value = '';
+            } else {
+                feedbackEl.className += ' text-success';
+                feedbackEl.textContent = `Selected: ${file.name} (${formatFileSize(file.size)})`;
+            }
+
+            // Remove any existing feedback
+            const existingFeedback = this.nextElementSibling;
+            if (existingFeedback && existingFeedback.classList.contains('file-feedback')) {
+                existingFeedback.remove();
+            }
+
+            feedbackEl.classList.add('file-feedback');
+            this.parentNode.insertBefore(feedbackEl, this.nextElementSibling);
+        });
+    });
+
+    // Correlation results expand/collapse
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('toggle-correlation-details')) {
+            e.preventDefault();
+            const detailsEl = e.target.closest('.correlation-result').querySelector('.correlation-details');
+            detailsEl.classList.toggle('d-none');
+            e.target.textContent = detailsEl.classList.contains('d-none') ? 'Show Details' : 'Hide Details';
+        }
+    });
+
+    // Auto-format URLs in correlation results
+    const urlElements = document.querySelectorAll('.url-display');
+    urlElements.forEach(el => {
+        const url = el.textContent.trim();
+        if (url) {
+            el.innerHTML = '';
+            const a = document.createElement('a');
+            a.href = url;
+            a.textContent = url;
+            a.target = '_blank';
+            el.appendChild(a);
+        }
+    });
+
+    // JSON syntax highlighting
+    document.querySelectorAll('.json-display').forEach(el => {
+        try {
+            const json = JSON.parse(el.textContent);
+            el.textContent = '';
+            el.appendChild(syntaxHighlight(json));
+        } catch (e) {
+            console.error('Error parsing JSON:', e);
+        }
+    });
+
+    // Responsive table handling
+    const tables = document.querySelectorAll('.table-responsive table');
+    tables.forEach(table => {
+        makeTableResponsive(table);
+    });
+});
+
+// Helper functions
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
+}
+
+function syntaxHighlight(json) {
+    if (typeof json != 'string') {
+        json = JSON.stringify(json, undefined, 2);
+    }
+    json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, function (match) {
+        let cls = 'text-dark';
+        if (/^"/.test(match)) {
+            if (/:$/.test(match)) {
+                cls = 'text-primary';
+            } else {
+                cls = 'text-success';
+            }
+        } else if (/true|false/.test(match)) {
+            cls = 'text-info';
+        } else if (/null/.test(match)) {
+            cls = 'text-warning';
+        }
+        return '<span class="' + cls + '">' + match + '</span>';
+    });
+}
+
+function makeTableResponsive(table) {
+    const headers = [].slice.call(table.querySelectorAll('th'));
+    const rows = [].slice.call(table.querySelectorAll('tbody tr'));
+
+    rows.forEach(row => {
+        const cells = [].slice.call(row.querySelectorAll('td'));
+        cells.forEach((cell, i) => {
+            const headerText = headers[i] ? headers[i].textContent : '';
+            cell.setAttribute('data-label', headerText);
+        });
+    });
+}

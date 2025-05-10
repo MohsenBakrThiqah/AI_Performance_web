@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}JMeter Correlations Finder{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h2>JMeter Correlations Finder</h2>
+    </div>
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data" action="{{ url_for('correlations') }}">
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label for="jmeter_file" class="form-label">JMeter Recording XML File</label>
+                        <input class="form-control" type="file" id="jmeter_file" name="jmeter_file" accept=".xml" required
+                               data-bs-toggle="tooltip" data-bs-placement="top"
+                               title="Upload your JMeter recording results file (XML format)">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="url_filter" class="form-label">URL Filter (comma-separated)</label>
+                        <input type="text" class="form-control" id="url_filter" name="url_filter"
+                               placeholder="example.com,api.service.org"
+                               data-bs-toggle="tooltip" data-bs-placement="top"
+                               title="Filter requests by URL (leave blank to analyze all)">
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> Analyze Correlations
+                </button>
+            </div>
+        </form>
+
+        {% if show_results %}
+            <div class="mt-5">
+                <h3 class="section-header">Correlation Analysis Results</h3>
+
+                {% if not results %}
+                    <div class="alert alert-info">
+                        No correlations found in the provided file with the current filters.
+                    </div>
+                {% else %}
+                    <div class="alert alert-success">
+                        Found {{ results|length }} request{% if results|length != 1 %}s{% endif %} with potential correlations
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Request</th>
+                                    <th>Method</th>
+                                    <th>URL</th>
+                                    <th>Parameters</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for result in results %}
+                                <tr>
+                                    <td>{{ result.label }}</td>
+                                    <td><span class="badge bg-info">{{ result.method }}</span></td>
+                                    <td class="url-display">{{ result.url }}</td>
+                                    <td>
+                                        {% for param in result.params %}
+                                            {% if param.correlated %}
+                                                <span class="badge bg-success">Correlated</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Static</span>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary toggle-correlation-details"
+                                                data-bs-toggle="tooltip" title="Show details">
+                                            <i class="bi bi-chevron-down"></i> Details
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="correlation-details d-none">
+                                    <td colspan="5">
+                                        <div class="p-3 bg-light rounded">
+                                            <h5>Parameter Details</h5>
+                                            <div class="row">
+                                                {% for param in result.params %}
+                                                <div class="col-md-6 mb-3">
+                                                    <div class="correlation-param {% if param.correlated %}correlated{% else %}static{% endif %}">
+                                                        <div class="d-flex justify-content-between">
+                                                            <strong class="param-highlight">{{ param.param }}</strong>
+                                                            {% if param.correlated %}
+                                                                <span class="badge bg-success">Correlated</span>
+                                                            {% else %}
+                                                                <span class="badge bg-secondary">Static</span>
+                                                            {% endif %}
+                                                        </div>
+                                                        <div class="mt-2">
+                                                            <div><small class="text-muted">Value:</small> {{ param.value|truncate(50) }}</div>
+                                                            {% if param.correlated %}
+                                                                <div class="mt-1">
+                                                                    <small class="text-muted">First found in:</small> {{ param.first_source }}
+                                                                </div>
+                                                                <div>
+                                                                    <small class="text-muted">Nearest found in:</small> {{ param.nearest_source }}
+                                                                </div>
+                                                                <div class="mt-2">
+                                                                    <small class="text-muted">JSONPath:</small>
+                                                                    <code class="jsonpath ms-2">{{ param.jsonpath }}</code>
+                                                                </div>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mt-4">
+                        <div class="card">
+                            <div class="card-header bg-info text-white">
+                                <h4 class="mb-0">How to use these results</h4>
+                            </div>
+                            <div class="card-body">
+                                <ol>
+                                    <li>For each <span class="badge bg-success">Correlated</span> parameter, create a JSON Extractor in JMeter</li>
+                                    <li>Use the provided JSONPath expression to extract the value</li>
+                                    <li>Reference the extracted value in subsequent requests using <code>${variable_name}</code></li>
+                                    <li>For <span class="badge bg-secondary">Static</span> parameters, you can keep them as-is in your test plan</li>
+                                </ol>
+                                <div class="alert alert-warning mt-3">
+                                    <strong>Tip:</strong> Always verify correlations by running your test plan with 1 user first.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Enhance correlation details toggling
+    document.addEventListener('DOMContentLoaded', function() {
+        // Make URLs clickable in the results
+        document.querySelectorAll('.url-display').forEach(el => {
+            const url = el.textContent.trim();
+            if (url) {
+                el.innerHTML = '';
+                const a = document.createElement('a');
+                a.href = url;
+                a.textContent = url;
+                a.target = '_blank';
+                el.appendChild(a);
+            }
+        });
+
+        // Better handling for details toggle
+        document.querySelectorAll('.toggle-correlation-details').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const icon = this.querySelector('i');
+                const detailsRow = this.closest('tr').nextElementSibling;
+
+                if (detailsRow.classList.contains('d-none')) {
+                    detailsRow.classList.remove('d-none');
+                    icon.classList.remove('bi-chevron-down');
+                    icon.classList.add('bi-chevron-up');
+                    this.setAttribute('title', 'Hide details');
+                } else {
+                    detailsRow.classList.add('d-none');
+                    icon.classList.remove('bi-chevron-up');
+                    icon.classList.add('bi-chevron-down');
+                    this.setAttribute('title', 'Show details');
+                }
+
+                // Update tooltip
+                const tooltip = bootstrap.Tooltip.getInstance(this);
+                if (tooltip) {
+                    tooltip.setContent({'.tooltip-inner': this.getAttribute('title')});
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
