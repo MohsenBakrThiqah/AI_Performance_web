@@ -5,12 +5,12 @@ from lxml import etree as ET
 
 def is_valid_xml_char(codepoint):
     return (
-        codepoint == 0x9 or
-        codepoint == 0xA or
-        codepoint == 0xD or
-        (0x20 <= codepoint <= 0xD7FF) or
-        (0xE000 <= codepoint <= 0xFFFD) or
-        (0x10000 <= codepoint <= 0x10FFFF)
+            codepoint == 0x9 or
+            codepoint == 0xA or
+            codepoint == 0xD or
+            (0x20 <= codepoint <= 0xD7FF) or
+            (0xE000 <= codepoint <= 0xFFFD) or
+            (0x10000 <= codepoint <= 0x10FFFF)
     )
 
 
@@ -22,6 +22,7 @@ def remove_invalid_xml_references(text):
             return '' if not is_valid_xml_char(codepoint) else chr(codepoint)
         except ValueError:
             return ''
+
     return re.sub(r'&#(x?[0-9A-Fa-f]+);', replace_entity, text)
 
 
@@ -32,6 +33,54 @@ def clean_and_parse_xml(filepath):
     decoded = raw.decode('utf-8', errors='ignore')
     cleaned = remove_invalid_xml_references(decoded)
     return ET.fromstring(cleaned.encode('utf-8'))
+
+
+def extract_dynamic_patterns(text, value):
+    """Extract patterns using the value as a dynamic regular expression"""
+    if not text or not value:
+        return []
+
+    # Escape special regex characters in the value
+    escaped_value = re.escape(value)
+    # Create a pattern that matches the value with some context
+    pattern = f"(.{{0,20}}?){escaped_value}(.{{0,20}}?)"
+
+    try:
+        matches = re.findall(pattern, text)
+        # Replace the actual value with (.+?) in the matches
+        processed_matches = [f"{before}(.+?){after}" for before, after in matches]
+        return processed_matches
+    except Exception:
+        return []
+
+
+def extract_params(text):
+    params = {}
+    if not text:
+        return params
+
+    # First try to parse as query string parameters
+    pairs = re.findall(r'([\w\.-]+)=([^&]*)', text)
+    if pairs:
+        for key, value in pairs:
+            params[key] = value
+        return params
+
+    # Then try to parse as JSON
+    try:
+        json_data = json.loads(text)
+        if isinstance(json_data, (dict, list)):
+            # For JSON objects/arrays, we'll still use flatten_json
+            return flatten_json(json_data)
+        else:
+            # For simple JSON values, store as is
+            params['value'] = str(json_data)
+            return params
+    except json.JSONDecodeError:
+        # For non-JSON content, store the raw text if it's not empty
+        if text.strip():
+            params['raw_content'] = text.strip()
+        return params
 
 
 def flatten_json(y, parent_key='', sep='.'):
@@ -51,23 +100,6 @@ def flatten_json(y, parent_key='', sep='.'):
             else:
                 items[new_key] = str(v)
     return items
-
-
-def extract_params(text):
-    params = {}
-    if not text:
-        return params
-    pairs = re.findall(r'([\w\.-]+)=([^&]*)', text)
-    if pairs:
-        for key, value in pairs:
-            params[key] = value
-        return params
-    try:
-        json_data = json.loads(text)
-        params.update(flatten_json(json_data))
-    except Exception:
-        pass
-    return params
 
 
 def normalize_url(url):
@@ -110,6 +142,7 @@ def analyze_jmeter_correlations(xml_path, url_filter=''):
                 responses.append({
                     'responseHeader': response_header,
                     'responseBody': response_body,
+                    'full_response': response_header + '\n' + response_body,
                 })
 
         for child in node:
@@ -121,8 +154,6 @@ def analyze_jmeter_correlations(xml_path, url_filter=''):
         raise RuntimeError(f"Failed to parse cleaned XML: {e}")
 
     collect_samples(root)
-
-    all_previous_responses = [resp['responseHeader'] + '\n' + resp['responseBody'] for resp in responses]
 
     url_filters = [u.strip() for u in url_filter.split(',')] if url_filter else []
 
@@ -143,16 +174,34 @@ def analyze_jmeter_correlations(xml_path, url_filter=''):
             if not param_value:
                 continue
 
-            first_found_idx = next((i for i in range(idx) if param_value in all_previous_responses[i]), None)
-            nearest_found_idx = next((i for i in range(idx - 1, -1, -1) if param_value in all_previous_responses[i]), None)
+            # Find all previous responses that contain this parameter value
+            matching_responses = []
+            for resp_idx, resp in enumerate(responses[:idx]):
+                if param_value in resp['full_response']:
+                    matches = extract_dynamic_patterns(resp['full_response'], param_value)
+                    matching_responses.append({
+                        'index': resp_idx,
+                        'label': requests[resp_idx]['label'],
+                        'matches': matches[:3]  # Limit to first 3 matches
+                    })
 
-            if first_found_idx is not None or nearest_found_idx is not None:
+            if matching_responses:
+                first_match = matching_responses[0]
+                last_match = matching_responses[-1]
+
                 param_details.append({
                     'param': param_name,
                     'value': param_value,
                     'correlated': True,
-                    'first_source': requests[first_found_idx]['label'] if first_found_idx is not None else 'N/A',
-                    'nearest_source': requests[nearest_found_idx]['label'] if nearest_found_idx is not None else 'N/A'
+                    'first_source': {
+                        'label': first_match['label'],
+                        'matches': first_match['matches']
+                    },
+                    'nearest_source': {
+                        'label': last_match['label'],
+                        'matches': last_match['matches']
+                    },
+                    'all_matches_count': len(matching_responses)
                 })
             else:
                 param_details.append({
@@ -164,6 +213,7 @@ def analyze_jmeter_correlations(xml_path, url_filter=''):
         if param_details:
             results.append({
                 'label': req['label'],
+                'method': req['method'],
                 'url': req['url'],
                 'params': param_details
             })

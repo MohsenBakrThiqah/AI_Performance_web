@@ -63,9 +63,10 @@
                             <tbody>
                                 {% for result in results %}
                                 <tr>
-                                    <td>{{ result.label }}</td>
+<!--                                    <td>{{ result.label }}</td>-->
+                                    <td title={{ result.label }} style="max-width: 20ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ result.label }}</td>
                                     <td><span class="badge bg-info">{{ result.method }}</span></td>
-                                    <td class="url-display">{{ result.url }}</td>
+                                    <td title={{ result.url }} class="url-display"style="max-width: 80ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ result.url }}</td>
                                     <td>
                                         {% for param in result.params %}
                                             {% if param.correlated %}
@@ -107,10 +108,6 @@
                                                                 <div>
                                                                     <small class="text-muted">Nearest found in:</small> {{ param.nearest_source }}
                                                                 </div>
-                                                                <div class="mt-2">
-                                                                    <small class="text-muted">JSONPath:</small>
-                                                                    <code class="jsonpath ms-2">{{ param.jsonpath }}</code>
-                                                                </div>
                                                             {% endif %}
                                                         </div>
                                                     </div>
@@ -133,7 +130,7 @@
                             <div class="card-body">
                                 <ol>
                                     <li>For each <span class="badge bg-success">Correlated</span> parameter, create a JSON Extractor in JMeter</li>
-                                    <li>Use the provided JSONPath expression to extract the value</li>
+                                    <li>Use the provided Regular expression to extract the value</li>
                                     <li>Reference the extracted value in subsequent requests using <code>${variable_name}</code></li>
                                     <li>For <span class="badge bg-secondary">Static</span> parameters, you can keep them as-is in your test plan</li>
                                 </ol>
