@@ -30,8 +30,9 @@
             </div>
 
             <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-search"></i> Analyze Correlations
+                <button type="submit" class="btn btn-primary" id="analyzeBtn">
+                    <span id="btnText"><i class="bi bi-search"></i> Analyze Correlations</span>
+                    <span id="btnSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                 </button>
             </div>
         </form>
@@ -65,7 +66,19 @@
                                 <tr>
 <!--                                    <td>{{ result.label }}</td>-->
                                     <td title={{ result.label }} style="max-width: 20ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ result.label }}</td>
-                                    <td><span class="badge bg-info">{{ result.method }}</span></td>
+                                    <td>
+                                      <span class="badge
+                                        {% if result.method == 'GET' %}bg-primary
+                                        {% elif result.method == 'POST' %}bg-success
+                                        {% elif result.method == 'PUT' %}bg-warning text-dark
+                                        {% elif result.method == 'DELETE' %}bg-danger
+                                        {% elif result.method == 'OPTIONS' %}bg-warning
+                                        {% elif result.method == 'BATCH' %}bg-dark
+                                        {% else %}bg-secondary
+                                        {% endif %}">
+                                        {{ result.method }}
+                                      </span>
+                                    </td>
                                     <td title={{ result.url }} class="url-display"style="max-width: 80ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ result.url }}</td>
                                     <td>
                                         {% for param in result.params %}
@@ -149,8 +162,22 @@
 
 {% block extra_js %}
 <script>
-    // Enhance correlation details toggling
     document.addEventListener('DOMContentLoaded', function() {
+        // Loading state for analyze button
+        const analyzeForm = document.querySelector('form');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const btnText = document.getElementById('btnText');
+        const btnSpinner = document.getElementById('btnSpinner');
+
+        if (analyzeForm) {
+            analyzeForm.addEventListener('submit', function() {
+                // Disable button and show spinner
+                analyzeBtn.disabled = true;
+                btnText.textContent = ' Processing...';
+                btnSpinner.classList.remove('d-none');
+            });
+        }
+
         // Make URLs clickable in the results
         document.querySelectorAll('.url-display').forEach(el => {
             const url = el.textContent.trim();
