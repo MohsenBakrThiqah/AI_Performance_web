@@ -8,7 +8,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, sen
 from werkzeug.utils import secure_filename
 from config import Config
 from utils.report_utils import generate_jmeter_report
-from utils.correlation_utils import analyze_jmeter_correlations
+from utils.correlation_utils import analyze_jmeter_correlations, generate_correlated_jmx_with_claude
 from utils.postman_utils import analyze_postman_collection, convert_postman_to_jmx, ask_claude_for_jmx
 
 # Configure logging
@@ -96,26 +96,44 @@ def create_app(config_class=Config):
         if request.method == 'POST':
             try:
                 if 'jmeter_file' not in request.files:
+                    flash('No file uploaded', 'error')
+                    return redirect(request.url)
+
+                file = request.files['jmeter_file']
+                if file.filename == '':
                     flash('No file selected', 'error')
                     return redirect(request.url)
 
-                jmeter_file = request.files['jmeter_file']
-                if jmeter_file.filename == '':
-                    flash('No selected file', 'error')
+                if not file.filename.endswith('.xml'):
+                    flash('Please upload an XML file', 'error')
                     return redirect(request.url)
 
-                filename = secure_filename(jmeter_file.filename)
-                upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                jmeter_file.save(upload_path)
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(file.filename))
+                file.save(filepath)
 
                 url_filter = request.form.get('url_filter', '')
-                results = analyze_jmeter_correlations(upload_path, url_filter)
+                results = analyze_jmeter_correlations(filepath, url_filter)
 
-                return render_template('correlations.html', results=results, show_results=True)
+                if request.form.get('use_claude') == 'on' and results:
+                    try:
+                        jmx_path = generate_correlated_jmx_with_claude(results, filepath)
+                        return send_file(
+                            jmx_path,
+                            as_attachment=True,
+                            download_name=f"correlated_test_plan_{uuid.uuid4().hex[:8]}.jmx",
+                            mimetype='application/xml'
+                        )
+                    except Exception as e:
+                        app.logger.error(f"Error generating JMX with Claude: {str(e)}")
+                        flash('Error generating JMX file. Please try again.', 'error')
+
+                return render_template('correlations.html', 
+                                    results=results, 
+                                    show_results=True)
 
             except Exception as e:
-                logger.error(f"Error analyzing correlations: {str(e)}")
-                flash(f'Error analyzing correlations: {str(e)}', 'error')
+                app.logger.error(f"Error processing file: {str(e)}")
+                flash(f'Error processing file: {str(e)}', 'error')
                 return redirect(request.url)
 
         return render_template('correlations.html', show_results=False)

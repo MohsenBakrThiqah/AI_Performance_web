@@ -1,6 +1,10 @@
 import re
 import json
 from lxml import etree as ET
+import anthropic
+import os
+import uuid
+from flask import current_app
 
 
 def is_valid_xml_char(codepoint):
@@ -219,3 +223,128 @@ def analyze_jmeter_correlations(xml_path, url_filter=''):
             })
 
     return results
+
+
+def get_filtered_samples(xml_path, correlation_results):
+    """Extract relevant HTTP samples from original JMX"""
+    root = clean_and_parse_xml(xml_path)
+    relevant_labels = {result['label'] for result in correlation_results}
+    filtered_samples = []
+    
+    def collect_relevant_samples(node):
+        if node.tag.endswith('httpSample') or node.tag.endswith('sample'):
+            label = node.get('lb')
+            if label in relevant_labels:
+                filtered_samples.append(ET.tostring(node, encoding='unicode', pretty_print=True))
+        for child in node:
+            collect_relevant_samples(child)
+    
+    collect_relevant_samples(root)
+    return filtered_samples
+
+
+def summarize_http_sample(xml_str):
+    """Summarize HTTP sample XML to reduce tokens while keeping essential information"""
+    try:
+        node = ET.fromstring(xml_str)
+        return {
+            'label': node.get('lb', ''),
+            'url': node.findtext('java.net.URL', ''),
+            'method': node.findtext('method', ''),
+            'path': node.findtext('path', ''),
+            'query_string': node.findtext('queryString', '')[:100] + '...' if node.findtext('queryString', '') else '',
+            'headers': {
+                line.split(':', 1)[0]: line.split(':', 1)[1]
+                for line in (node.findtext('requestHeader', '').split('\n'))
+                if ':' in line
+            }
+        }
+    except Exception:
+        return None
+
+
+def generate_correlated_jmx_with_claude(correlation_results, xml_path):
+    """Generate a JMX file with correlated requests using Claude AI."""
+    try:
+        client = anthropic.Anthropic(
+            api_key="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"
+        )
+
+        # Get filtered XML samples and summarize them
+        original_samples = get_filtered_samples(xml_path, correlation_results)
+        summarized_samples = [
+            summarize_http_sample(sample) 
+            for sample in original_samples
+            if sample
+        ]
+        
+        # Prepare correlation data
+        requests_info = []
+        for result in correlation_results:
+            correlated_params = [p for p in result['params'] if p['correlated']]
+            if correlated_params:
+                requests_info.append({
+                    'label': result['label'],
+                    'url': result['url'],
+                    'method': result['method'],
+                    'correlations': [{
+                        'param': p['param'],
+                        'pattern': p['first_source']['matches'][0] if p['first_source']['matches'] else None,
+                        'source_label': p['first_source']['label']
+                    } for p in correlated_params]
+                })
+
+        prompt = (
+            "You are a senior QA automation engineer. Create a complete JMeter JMX test plan "
+            "using the summarized requests and correlation information provided below.\n\n"
+            f"=== Original HTTP Samples (Summarized) ===\n"
+            f"{json.dumps(summarized_samples, indent=2)}\n\n"
+            f"=== Correlation Requirements ===\n"
+            f"{json.dumps(requests_info, indent=2)}\n\n"
+            "Create a JMX file that:\n"
+            "1. Creates HTTP requests based on the summarized samples\n"
+            "2. Adds Regular Expression Extractors for the correlations\n"
+            "3. Updates the correlated parameters to use variables\n"
+            "4. Includes proper Thread Group configuration\n"
+            "Please return only the JMeter JMX XML content."
+        )
+
+        # Stream response from Claude
+        with client.messages.stream(
+            model="claude-3-7-sonnet-20250219",
+            max_tokens=32000,  # Reduced max tokens
+            temperature=0.3,
+            system="You are a senior QA automation engineer specializing in JMeter test plans.",
+            messages=[{"role": "user", "content": prompt}]
+        ) as stream:
+            full_text = ""
+            for chunk in stream:
+                if chunk.type == "content_block_delta":
+                    full_text += chunk.delta.text
+
+            jmx_content = extract_jmx_xml(full_text)
+
+            if jmx_content.strip():
+                output_path = os.path.join(
+                    current_app.config['UPLOAD_FOLDER'],
+                    f"correlated_test_plan_{uuid.uuid4().hex[:8]}.jmx"
+                )
+                with open(output_path, "w", encoding="utf-8") as f:
+                    f.write(jmx_content)
+                return output_path
+            else:
+                raise ValueError("Claude returned no valid JMX content")
+
+    except Exception as e:
+        current_app.logger.error(f"Error generating JMX with Claude: {str(e)}")
+        raise
+
+
+def extract_jmx_xml(text):
+    """Extract JMX XML content from Claude's response"""
+    # Look for XML content between tags or code blocks
+    xml_pattern = r'(?s)(?:<\?xml.*?</jmeterTestPlan>)|(?:```xml\n(.*?)\n```)'
+    match = re.search(xml_pattern, text)
+    if match:
+        return match.group(1) if match.group(1) else match.group(0)
+    return ""
