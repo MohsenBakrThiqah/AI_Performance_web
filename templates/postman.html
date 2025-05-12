@@ -75,9 +75,17 @@
                                                     type="button" data-bs-toggle="collapse"
                                                     data-bs-target="#collapse{{ loop.index }}"
                                                     aria-expanded="{{ 'true' if loop.first else 'false' }}">
-                                                <span class="badge bg-{{ 'primary' if request.parameters else 'secondary' }} me-2">
-                                                    {{ request.method }}
-                                                </span>
+                                                    <span class="badge
+                                                        {% if request.method == 'GET' %}bg-primary
+                                                        {% elif request.method == 'POST' %}bg-success
+                                                        {% elif request.method == 'PUT' %}bg-warning text-dark
+                                                        {% elif request.method == 'DELETE' %}bg-danger
+                                                        {% elif request.method == 'OPTIONS' %}bg-warning
+                                                        {% elif request.method == 'BATCH' %}bg-dark
+                                                        {% else %}bg-secondary
+                                                        {% endif %} me-2">
+                                                        {{ request.method }}
+                                                    </span>
                                                 {{ request.request }}
                                             </button>
                                         </h2>

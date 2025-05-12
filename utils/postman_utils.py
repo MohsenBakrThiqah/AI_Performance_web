@@ -11,6 +11,7 @@ from lxml import etree as ET
 import openai
 from flask import current_app
 
+
 def analyze_postman_collection(postman_file_path):
     """Analyze a Postman collection for correlations and parameters"""
     try:
@@ -18,6 +19,17 @@ def analyze_postman_collection(postman_file_path):
             collection = json.load(f)
 
         all_items = []
+
+        # Modified walk_items to handle deeper nesting
+        def walk_items(items, result):
+            for item in items:
+                if 'item' in item:
+                    # This is a folder, recurse into it
+                    walk_items(item['item'], result)
+                else:
+                    # This is a request, add it
+                    result.append(item)
+
         walk_items(collection.get('item', []), all_items)
 
         correlation_summary = []
@@ -28,15 +40,40 @@ def analyze_postman_collection(postman_file_path):
 
             name = item.get("name", f"Request {current_index + 1}")
             request = item['request']
-            body_json = extract_request_body(request)
+            method = request.get("method", "GET").upper()
 
-            if not body_json:
+            # Extract parameters from both body (for POST/PUT) and URL (for GET)
+            parameters = {}
+
+            # Handle request body for POST/PUT/etc.
+            if method in ['POST', 'PUT', 'PATCH']:
+                body_json = extract_request_body(request)
+                if body_json:
+                    parameters.update(flatten_json(body_json))
+
+            # Handle URL parameters for all methods (especially GET)
+            url_params = extract_url_parameters(request)
+            if url_params:
+                parameters.update(url_params)
+
+            # Handle path variables
+            path_vars = extract_path_variables(request)
+            if path_vars:
+                parameters.update(path_vars)
+
+            if not parameters:
+                # Still include the request even if it has no parameters
+                correlation_summary.append({
+                    "request": name,
+                    "method": method,
+                    "url": get_request_url(request),
+                    "parameters": []
+                })
                 continue
 
-            flat_params = flatten_json(body_json)
             param_list = []
 
-            for param, value in flat_params.items():
+            for param, value in parameters.items():
                 if not value:
                     continue
 
@@ -74,13 +111,12 @@ def analyze_postman_collection(postman_file_path):
                         "correlate": False
                     })
 
-            if param_list:
-                correlation_summary.append({
-                    "request": name,
-                    "method": request.get("method", "GET"),
-                    "url": get_request_url(request),
-                    "parameters": param_list
-                })
+            correlation_summary.append({
+                "request": name,
+                "method": method,
+                "url": get_request_url(request),
+                "parameters": param_list
+            })
 
         return {
             "collection_name": collection.get("info", {}).get("name", "Unnamed Collection"),
@@ -92,6 +128,81 @@ def analyze_postman_collection(postman_file_path):
         raise
 
 
+def extract_path_variables(request):
+    """Extract path variables from a request"""
+    url = request.get('url', {})
+    if isinstance(url, dict):
+        variables = {}
+        for var in url.get('variable', []):
+            if 'key' in var and 'value' in var:
+                variables[var['key']] = var['value']
+        return variables
+    return {}
+
+
+def extract_url_parameters(request):
+    """Extract URL parameters from a request"""
+    url = request.get('url', {})
+    if isinstance(url, str):
+        # Handle case where URL is a string (parse query parameters)
+        from urllib.parse import parse_qs, urlparse
+        query = urlparse(url).query
+        params = parse_qs(query)
+        return {k: v[0] if len(v) == 1 else v for k, v in params.items()}
+    elif isinstance(url, dict):
+        # Handle Postman's URL object format
+        params = {}
+        for param in url.get('query', []):
+            if 'key' in param and 'value' in param:
+                params[param['key']] = param['value']
+        return params
+    return {}
+
+
+def extract_request_body(request):
+    """Extract and parse request body"""
+    body = request.get('body', {})
+    if not body:
+        return None
+
+    mode = body.get('mode')
+    if mode == 'raw':
+        try:
+            return json.loads(body.get('raw', '{}'))
+        except json.JSONDecodeError:
+            return None
+    elif mode == 'urlencoded':
+        params = {}
+        for param in body.get('urlencoded', []):
+            if 'key' in param and 'value' in param:
+                params[param['key']] = param['value']
+        return params
+    elif mode == 'formdata':
+        params = {}
+        for param in body.get('formdata', []):
+            if 'key' in param and 'value' in param:
+                params[param['key']] = param['value']
+        return params
+    return None
+
+
+def get_request_url(request):
+    """Get the complete URL from a request"""
+    url = request.get('url', {})
+    if isinstance(url, str):
+        return url
+
+    if isinstance(url, dict):
+        raw_url = url.get('raw', '')
+        if raw_url:
+            return raw_url
+
+        # Construct URL from components
+        host = '.'.join(url.get('host', []))
+        path = '/'.join(url.get('path', []))
+        return f"{host}/{path}" if host else path
+
+    return ''
 def convert_postman_to_jmx(postman_file_path):
     """Convert a Postman collection to JMeter JMX format"""
     try:
