@@ -224,6 +224,10 @@ def create_app(config_class=Config):
             app.logger.error(f"Error in JMX generation: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
+    @app.route('/features')
+    def features():
+        return render_template('features.html')
+
     @app.errorhandler(413)
     def request_entity_too_large(error):
         return render_template('error.html', message='File too large (max 16MB)'), 413

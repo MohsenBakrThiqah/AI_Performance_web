@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}Features - THIQAH AI Performance Assistant{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h1 class="display-4 mb-5 text-center fade-in">Our Features</h1>
+
+    <div class="row mb-5">
+        <div class="col-md-12">
+            <div class="card shadow-sm mb-4 fade-in" style="--delay: 0.2s">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <h2><i class="bi bi-speedometer2 text-primary"></i> AI Report Generator</h2>
+                            <p class="lead">Automated Performance Test Report Generation</p>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="feature-section-layout">
+                                <ul class="list-unstyled feature-list">
+                                    <li><i class="bi bi-check2-circle text-success"></i> Generate comprehensive performance test reports</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> AI-powered analysis of response times, throughput, and error rates</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Automatic compliance checking against SLA thresholds</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Detailed recommendations for performance optimization</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Exportable reports in multiple formats (PDF, HTML, DOCX)</li>
+                                </ul>
+                                <div class="button-wrapper">
+                                    <button class="btn btn-outline-primary square-button" type="button" data-bs-toggle="collapse" 
+                                            data-bs-target="#howToUseReport" aria-expanded="false">
+                                        How To<br>Use
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="collapse mt-3" id="howToUseReport">
+                                <div class="card card-body bg-light">
+                                    <h5>How to Generate a Report:</h5>
+                                    <ol>
+                                        <li>Upload your JMeter HTML report as .zip file</li>
+                                        <li>add fields that relates to this test round</li>
+                                        <li>You have the option to check if you need GPT-4o analysis</li>
+                                        <li>Click "Generate Report" and wait for for the page to load</li>
+                                        <li>Download will start automatically for the generated report</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4 fade-in" style="--delay: 0.4s">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <h2><i class="bi bi-search text-success"></i> XML Correlation Finder</h2>
+                            <p class="lead">Intelligent Dynamic Parameter Detection</p>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="feature-section-layout">
+                                <ul class="list-unstyled feature-list">
+                                    <li><i class="bi bi-check2-circle text-success"></i> Automatic detection of session IDs, tokens, and dynamic values</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Smart XML parsing with support for complex nested structures</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Machine learning-based correlation pattern recognition</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Custom regex pattern generation for parameter extraction</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Support for SOAP, REST, and custom XML formats</li>
+                                </ul>
+                                <div class="button-wrapper">
+                                    <button class="btn btn-outline-primary square-button" type="button" data-bs-toggle="collapse" 
+                                            data-bs-target="#howToUseXML" aria-expanded="false">
+                                        How To<br>Use
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="collapse mt-3" id="howToUseXML">
+                                <div class="card card-body bg-light">
+                                    <h5>How to Find Correlations:</h5>
+                                    <ol>
+                                        <li>Upload your XML file generated by JMeter Recorder</li>
+                                        <li>Add URLs filters if needed comma separated</li>
+                                        <li>You can add a mutual substring in all URLs you need to include</li>
+                                        <li>Run the correlation analysis</li>
+                                        <li>Review the detected correlations</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4 fade-in" style="--delay: 0.6s">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <h2><i class="bi bi-file-earmark-code text-info"></i> AI JMX Generation from XML</h2>
+                            <p class="lead">Automated Test Plan Creation</p>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="feature-section-layout">
+                                <ul class="list-unstyled feature-list">
+                                    <li><i class="bi bi-check2-circle text-success"></i> Intelligent XML to JMeter test plan conversion</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> AI-powered script optimization and structuring</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Automatic correlation handler implementation</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Integration of best practice assertions and listeners</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Automatic generation of data parameterization</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Built-in error handling and validation checks</li>
+                                </ul>
+                                <div class="button-wrapper">
+                                    <button class="btn btn-outline-primary square-button" type="button" data-bs-toggle="collapse" 
+                                            data-bs-target="#howToUseJMX" aria-expanded="false">
+                                        How To<br>Use
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="collapse mt-3" id="howToUseJMX">
+                                <div class="card card-body bg-light">
+                                    <h5>How to Generate JMX:</h5>
+                                    <ol>
+                                        <li>Upload your XML file generated by JMeter Recorder</li>
+                                        <li>Add URLs filters if needed comma separated</li>
+                                        <li>You can add a mutual substring in all URLs you need to include</li>
+                                        <li>Mark check box Generate JMX file using Claude AI</li>
+                                        <li>Run the correlation analysis</li>
+                                        <li>Wait for JMX File to download automatically</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4 fade-in" style="--delay: 0.8s">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <h2><i class="bi bi-arrow-left-right text-warning"></i> Postman Collection Converter</h2>
+                            <p class="lead">Postman to JMeter Conversion</p>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="feature-section-layout">
+                                <ul class="list-unstyled feature-list">
+                                    <li><i class="bi bi-check2-circle text-success"></i> Direct conversion of Postman collections to JMX files</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Preservation of all request headers and parameters</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Support for Postman environment variables</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Handling of multiple authentication methods</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Pre-request and post-request script conversion</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Integration of best practice assertions and listeners</li>                        
+                                    <li><i class="bi bi-check2-circle text-success"></i> AI-powered script optimization and structuring</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Automatic test data extraction and parameterization</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Support for complex request bodies and file uploads</li>
+                                </ul>
+                                <div class="button-wrapper">
+                                    <button class="btn btn-outline-primary square-button" type="button" data-bs-toggle="collapse" 
+                                            data-bs-target="#howToUsePostman" aria-expanded="false">
+                                        How To<br>Use
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="collapse mt-3" id="howToUsePostman">
+                                <div class="card card-body bg-light">
+                                    <h5>How to Convert Collections:</h5>
+                                    <ol>
+                                        <li>Export and upload your Postman collection</li>
+                                        <li>Click Convert to JMX Button</li>
+                                        <li>Wait for JMX File to download automatically</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4 fade-in" style="--delay: 1s">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <h2><i class="bi bi-gear text-danger"></i> Postman Collection Correlation Finder</h2>
+                            <p class="lead">Automated Correlation Analysis</p>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="feature-section-layout">
+                                <ul class="list-unstyled feature-list">
+                                    <li><i class="bi bi-check2-circle text-success"></i> Deep analysis of Postman collection dependencies</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Identification of dynamic tokens and session variables</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> AI-powered correlation pattern detection</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Generation of ready-to-use correlation rules</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Cross-request dependency mapping</li>
+                                </ul>
+                                <div class="button-wrapper">
+                                    <button class="btn btn-outline-primary square-button" type="button" data-bs-toggle="collapse" 
+                                            data-bs-target="#howToUseCorrelationFinder" aria-expanded="false">
+                                        How To<br>Use
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="collapse mt-3" id="howToUseCorrelationFinder">
+                                <div class="card card-body bg-light">
+                                    <h5>How to Find Postman Correlations:</h5>
+                                    <ol>
+                                        <li>Upload your Postman collection</li>
+                                        <li>Click Analyze Collection</li>
+                                        <li>Wait for the Analysis to be displayed</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm fade-in" style="--delay: 1.2s">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <h2><i class="bi bi-code-slash text-danger"></i> Postman Collection to JMX AI Generator</h2>
+                            <p class="lead">AI-Powered JMX File Generation</p>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="feature-section-layout">
+                                <ul class="list-unstyled feature-list">
+                                    <li><i class="bi bi-check2-circle text-success"></i> Support for JSON and form data requests</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Automatic JSON Path extractor creation</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Integration of correlation rules</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> AI-optimized test plan structure JMeter compatible</li>
+                                    <li><i class="bi bi-check2-circle text-success"></i> Validation of generated scripts</li>
+                                </ul>
+                                <div class="button-wrapper">
+                                    <button class="btn btn-outline-primary square-button" type="button" data-bs-toggle="collapse" 
+                                            data-bs-target="#howToUseAIGenerator" aria-expanded="false">
+                                        How To<br>Use
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="collapse mt-3" id="howToUseAIGenerator">
+                                <div class="card card-body bg-light">
+                                    <h5>How to Generate JMX with AI:</h5>
+                                    <ol>
+                                        <li>Upload your Postman collection</li>
+                                        <li>Click Analyze Collection</li>
+                                        <li>Wait for the Analysis to be displayed</li>
+                                        <li>Click Generate with Claude AI</li>
+                                        <li>Wait for JMX File to download automatically</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .fade-in {
+        opacity: 0;
+        animation: fadeIn 0.6s ease-out forwards;
+        animation-delay: var(--delay, 0s);
+    }
+
+    [data-aos] {
+        display: none;
+    }
+    
+    .card h2 {
+        font-size: 1.75rem;
+        margin-bottom: 1rem;
+    }
+    
+    .card .lead {
+        font-size: 1.1rem;
+    }
+    
+    @media (max-width: 768px) {
+        .card .col-md-4 {
+            margin-bottom: 1.5rem;
+        }
+    }
+
+    .btn-outline-primary {
+        min-width: 120px;
+    }
+
+    .collapse {
+        border-radius: 0.25rem;
+    }
+
+    .card-body .card-body {
+        padding: 1rem;
+    }
+
+    .collapse ol {
+        margin-bottom: 0;
+    }
+
+    .feature-section-layout {
+        display: flex;
+        align-items: flex-start;
+        gap: 2rem;
+    }
+
+    .feature-list {
+        flex: 1;
+    }
+
+    .button-wrapper {
+        padding-top: 2rem;
+    }
+
+    .square-button {
+        width: 70px;
+        height: 70px;
+        padding: 8px;
+        border-radius: 8px;
+        white-space: normal;
+        line-height: 1.2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+
+    @media (max-width: 768px) {
+        .feature-section-layout {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .button-wrapper {
+            padding-top: 0;
+            align-self: center;
+        }
+    }
+</style>
+{% endblock %}

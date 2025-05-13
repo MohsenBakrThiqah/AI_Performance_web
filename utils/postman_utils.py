@@ -588,6 +588,11 @@ def ask_claude_for_jmx(postman_json, correlation_data):
             f"{json.dumps(summarize_postman(postman_json), indent=2)}\n\n"
             "=== Correlation Mapping ===\n"
             f"{json.dumps(correlation_data, indent=2)}\n\n"
+            "Create a JMX file that:\n"
+            "1. Creates HTTP requests based on the summarized Postman Collection\n"
+            "2. Adds Extractors for the correlations\n"
+            "3. Updates the correlated parameters to use variables\n"
+            "4. Includes proper Thread Group configuration\n"
             "Please return only the JMeter JMX XML content."
         )
 

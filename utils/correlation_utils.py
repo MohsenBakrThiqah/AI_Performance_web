@@ -305,7 +305,6 @@ def generate_correlated_jmx_with_claude(correlation_results, xml_path):
             "1. Creates HTTP requests based on the summarized samples\n"
             "2. Adds Regular Expression Extractors for the correlations\n"
             "3. Updates the correlated parameters to use variables\n"
-            "4. Includes proper Thread Group configuration\n"
             "Please return only the JMeter JMX XML content."
         )
 
