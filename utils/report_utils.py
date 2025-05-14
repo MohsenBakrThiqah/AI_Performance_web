@@ -133,13 +133,13 @@ def edit_html_and_js(html_path, js_path, stats_path, form_data):
             gpt_response = ask_gpt(statistics_content, form_data)
             errors_analysis = analyze_errors(js_path)
             if errors_analysis:
-                gpt_response += f"<br><br><p class='dashboard-title'>OpenAI - Errors Investigation Recommendation</p>{errors_analysis}"
+                gpt_response += f"<br><br><p class='dashboard-title'>Claude AI - Errors Investigation Recommendation</p>{errors_analysis}"
 
             gpt_response = gpt_response.replace('\n', '<br>').replace('#', '').replace('*', '')
 
             modified_html = modified_html.replace(
                 '<script src="sbadmin2-1.0.7/bower_components/jquery/dist/jquery.min.js"></script>',
-                f'<script src="sbadmin2-1.0.7/bower_components/jquery/dist/jquery.min.js"></script>\n<br><br><p class="dashboard-title">OpenAI Statistics Analysis</p>{gpt_response}'
+                f'<script src="sbadmin2-1.0.7/bower_components/jquery/dist/jquery.min.js"></script>\n<br><br><p class="dashboard-title">Claude AI Statistics Analysis</p>{gpt_response}'
             )
 
         # Save modified HTML
