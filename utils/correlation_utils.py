@@ -5,6 +5,7 @@ import anthropic
 import os
 import uuid
 from flask import current_app
+from utils.config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
 
 
 def is_valid_xml_char(codepoint):
@@ -266,9 +267,7 @@ def summarize_http_sample(xml_str):
 def generate_correlated_jmx_with_claude(correlation_results, xml_path):
     """Generate a JMX file with correlated requests using Claude AI."""
     try:
-        client = anthropic.Anthropic(
-            api_key="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"
-        )
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
         # Get filtered XML samples and summarize them
         original_samples = get_filtered_samples(xml_path, correlation_results)
@@ -310,7 +309,7 @@ def generate_correlated_jmx_with_claude(correlation_results, xml_path):
 
         # Stream response from Claude
         with client.messages.stream(
-            model="claude-3-7-sonnet-20250219",
+            model=ANTHROPIC_MODEL,
             max_tokens=32000,  # Reduced max tokens
             temperature=0.3,
             system="You are a senior QA automation engineer specializing in JMeter test plans.",

@@ -10,6 +10,7 @@ from anthropic import Anthropic
 from lxml import etree as ET
 import openai
 from flask import current_app
+from utils.config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
 
 
 def analyze_postman_collection(postman_file_path):
@@ -502,47 +503,6 @@ def has_auth_header(headers):
     return False
 
 
-# def generate_jmx_with_claude(postman_json, correlation_data):
-#     """Generate JMX using Claude AI"""
-#     try:
-#         full_prompt = (
-#             "You are a senior QA automation engineer. Convert the following Postman collection into a JMeter JMX test plan. "
-#             "Apply dynamic value correlations using JSON Extractors wherever applicable, based on the correlation mapping below.\n\n"
-#             "=== Postman Collection JSON ===\n"
-#             f"{json.dumps(postman_json, indent=2)}\n\n"
-#             "=== Correlation Mapping ===\n"
-#             f"{json.dumps(correlation_data, indent=2)}\n\n"
-#             "Please return the JMeter JMX XML content as output only. Make sure the structure is valid and ready to import in JMeter."
-#         )
-#
-#         # Assuming you have the anthropic package installed and client configured
-#         client = Anthropic()
-#
-#         message = client.messages.create(
-#             model="claude-3-7-sonnet-20250219",  # or another Claude 3 model
-#             max_tokens=64000,
-#             temperature=0.3,
-#             system="You are a senior QA automation engineer.",
-#             messages=[
-#                 {"role": "user", "content": full_prompt}
-#             ]
-#         )
-#
-#         result = message.content[0].text
-#         output_path = os.path.join(
-#             current_app.config['UPLOAD_FOLDER'],
-#             f"generated_test_plan_{uuid.uuid4().hex[:8]}.jmx"
-#         )
-#
-#         with open(output_path, "w", encoding='utf-8') as f:
-#             f.write(result)
-#
-#         return output_path
-#
-#     except Exception as e:
-#         current_app.logger.error(f"Error generating JMX with Claude: {str(e)}")
-#         raise
-
 def summarize_postman(collection_json):
     summary = {
         "info": collection_json.get("info", {}),
@@ -579,7 +539,7 @@ def extract_jmx_xml(text):
 
 def ask_claude_for_jmx(postman_json, correlation_data):
     try:
-        client = anthropic.Anthropic(api_key="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")
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
         prompt = (
             "You are a senior QA automation engineer. Convert the following Postman collection into a JMeter JMX test plan. "
@@ -598,7 +558,7 @@ def ask_claude_for_jmx(postman_json, correlation_data):
 
         # Use streaming with proper handling
         with client.messages.stream(
-            model="claude-3-7-sonnet-20250219",
+            model=ANTHROPIC_MODEL,
             max_tokens=64000,
             temperature=0.3,
             system="You are a senior QA automation engineer specializing in JMeter test plans.",

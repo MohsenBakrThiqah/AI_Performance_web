@@ -9,6 +9,8 @@ import zipfile
 import tempfile
 from urllib.parse import urlparse
 import html
+import anthropic
+from utils.config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -91,7 +93,7 @@ def edit_html_and_js(html_path, js_path, stats_path, form_data):
                                                                                 "break-after: page; display: none;\" "
                                                                                 "onload=\"this.style.display='none'; "
                                                                                 "window.matchMedia('print').addListener("
-                                                                                "mql => mql.matches &amp;&amp; ("
+                                                                                "mql => mql.matches &amp;&amp; (" 
                                                                                 "this.style.display='block')); "
                                                                                 "window.onafterprint = () => "
                                                                                 "this.style.display='none';\">")
@@ -183,24 +185,59 @@ def analyze_errors(js_path):
 
 
 def ask_gpt_errors(prompt):
-    """Get error analysis from GPT"""
+    """Get error analysis from Claude"""
     try:
-        openai.api_key = "sk-proj-3LEJyNSnWV3CPZKTt0WuT3BlbkFJgud3qBm7ZQVfZd9ojuL3"  # Should be set in environment
-
-        completion = openai.ChatCompletion.create(
-            model="gpt-4o",
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        
+        response = client.messages.create(
+            model=ANTHROPIC_MODEL,
+            max_tokens=5000,
             messages=[
-                {"role": "system",
-                 "content": "You are a Performance test engineer, having the error results of load test as JSON file generated from JMeter as follow:" + prompt},
                 {"role": "user",
-                 "content": "in one section and short lines, provide me with recommendations where to investigate to find the root cause of these error, also provide me with the possible reasons that caused these errors, if you didn't find any errors in provided JSON respond that no errors found for this test so no need for any analysis"}
+                 "content": "You are a specialized Performance Test Engineer with extensive experience in analyzing JMeter test results. Your expertise includes identifying performance bottlenecks, error patterns, and root causes in load test data."
+                            f"I need your expert analysis of these JMeter error results from a load test. The data is provided as JSON extracts from dashboard.js:\n\n{prompt}\n\n"
+                            f"Please provide me with:\n"
+                            f"1. A concise, actionable analysis of these errors\n"
+                            f"2. Specific recommendations for where to investigate to find root causes\n"
+                            f"3. The most likely reasons these errors occurred based on error patterns\n"
+                            f"4. Any correlations between error types and specific transactions\n\n"
+                            f"If no errors are found in the provided JSON, clearly state that no errors were detected and no analysis is needed.\n"
+                            f"Format your response in short, well-organized paragraphs with clear headings."}
             ]
         )
 
-        return completion['choices'][0]['message']['content']
+        return response.content[0].text
     except Exception as e:
-        logging.error(f"Error getting GPT error analysis: {str(e)}")
+        logging.error(f"Error getting Claude error analysis: {str(e)}")
         return None
+
+
+def ask_gpt(statistics_content, form_data):
+    """Get analysis from Claude"""
+    try:
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        
+        response = client.messages.create(
+            model=ANTHROPIC_MODEL,
+            max_tokens=2000,
+            messages=[
+                {"role": "user",
+                 "content": "You are a specialized Performance Test Engineer with extensive experience in analyzing JMeter test results. Your expertise includes identifying performance bottlenecks, error patterns, and root causes in load test data."
+                            f"Please analyze these JMeter performance test results:\n\n{statistics_content}\n\n"
+                            f"Thiqah Performance Standards:\n"
+                            f"- 90th percentile response time threshold (pct1ResTime): {form_data['api_threshold']} ms or below\n"
+                            f"- Error percentage threshold: {form_data['err_rate_threshold']}% or below\n\n"
+                            f"Provide your analysis in these two distinct sections:\n"
+                            f"1. EXECUTIVE SUMMARY: Overall test performance assessment with clear pass/fail status against Thiqah standards. Include key metrics, major bottlenecks, and critical findings.\n\n"
+                            f"2. PERFORMANCE BOTTLENECKS: Detailed analysis of the specific requests with highest response times or error rates. Include specific transaction names, their metrics, and targeted recommendations for improvement.\n\n"
+                            f"Focus on actionable insights that would help developers or system administrators improve performance. Be specific about which endpoints need attention."}
+            ]
+        )
+
+        return response.content[0].text
+    except Exception as e:
+        logging.error(f"Error getting Claude analysis: {str(e)}")
+        return "Claude analysis failed due to an error"
 
 
 def generate_custom_html(form_data):
@@ -281,26 +318,6 @@ def generate_custom_html(form_data):
                     </tr>
                 </table>
     '''
-
-
-def ask_gpt(statistics_content, form_data):
-    """Get analysis from GPT"""
-    try:
-        openai.api_key = "sk-proj-3LEJyNSnWV3CPZKTt0WuT3BlbkFJgud3qBm7ZQVfZd9ojuL3"  # Should be set in environment
-
-        completion = openai.ChatCompletion.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": "You are a Performance test engineer"},
-                {"role": "user",
-                 "content": f"Here is the performance test result data from JMeter: \n\n{statistics_content}\n\nCreate a comprehensive analysis with the following Criteria: Thiqah standards\n\n Accepted pct1ResTime (90% Line): Up to {form_data['api_threshold']} millisecond.\n Accepted errorPct: Up to {form_data['err_rate_threshold']}.00 ,if lower then passed. \n\nFirst Section: Summary for the analysis.\nSecond section: short summary for requests that have the highest impact for application slowness."}
-            ]
-        )
-
-        return completion['choices'][0]['message']['content']
-    except Exception as e:
-        logging.error(f"Error getting GPT analysis: {str(e)}")
-        return "GPT analysis failed due to an error"
 
 
 def edit_statistics_table(js_file_path, form_data):
