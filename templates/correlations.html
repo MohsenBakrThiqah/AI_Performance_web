@@ -39,7 +39,6 @@
             <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                 <button type="submit" class="btn btn-primary" id="analyzeBtn">
                     <span id="btnText"><i class="bi bi-search"></i> Analyze Correlations</span>
-                    <span id="btnSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                 </button>
             </div>
         </form>
@@ -170,18 +169,41 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Loading state for analyze button
         const analyzeForm = document.querySelector('form');
         const analyzeBtn = document.getElementById('analyzeBtn');
-        const btnText = document.getElementById('btnText');
-        const btnSpinner = document.getElementById('btnSpinner');
+        const useClaudeCheckbox = document.getElementById('use_claude');
 
         if (analyzeForm) {
-            analyzeForm.addEventListener('submit', function() {
-                // Disable button and show spinner
-                analyzeBtn.disabled = true;
-                btnText.textContent = ' Processing...';
-                btnSpinner.classList.remove('d-none');
+            analyzeForm.addEventListener('submit', function(event) {
+                if (useClaudeCheckbox.checked) {
+                    event.preventDefault(); // Prevent form submission
+                    const message = `
+                        <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="infoModalLabel">Processing JMX With Claude AI</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        Please wait for the page to finish loading. The JMX file will be downloaded automatically.
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    document.body.insertAdjacentHTML('beforeend', message);
+                    const infoModal = new bootstrap.Modal(document.getElementById('infoModal'));
+                    infoModal.show();
+
+                    // Simulate form submission after showing the modal
+                    setTimeout(() => {
+                        analyzeForm.submit();
+                    }, 1000);
+                }
             });
         }
 
