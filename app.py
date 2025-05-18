@@ -224,6 +224,11 @@ def create_app(config_class=Config):
             app.logger.error(f"Error in JMX generation: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
+    @app.route('/favicon.ico')
+    def favicon():
+        return send_from_directory(os.path.join(app.root_path, 'static'),
+                                  'images/favicon.ico', mimetype='image/vnd.microsoft.icon')
+
     @app.route('/features')
     def features():
         return render_template('features.html')
