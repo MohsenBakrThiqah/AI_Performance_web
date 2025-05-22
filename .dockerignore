@@ -28,4 +28,4 @@ Dockerfile
 .dockerignore
 README.md
 *.jmx
-uploads/
+uploads/*

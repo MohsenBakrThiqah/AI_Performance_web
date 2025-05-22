@@ -5,7 +5,7 @@ import anthropic
 import os
 import uuid
 from flask import current_app
-from utils.config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
+from config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
 
 
 def is_valid_xml_char(codepoint):

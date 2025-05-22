@@ -8,9 +8,9 @@ from urllib.parse import urlparse
 import anthropic
 from anthropic import Anthropic
 from lxml import etree as ET
-import openai
+# import openai
 from flask import current_app
-from utils.config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
+from config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
 
 
 def analyze_postman_collection(postman_file_path):
