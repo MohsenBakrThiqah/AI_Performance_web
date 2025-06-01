@@ -54,7 +54,11 @@
                                     </button>
                                     <button type="button" id="claudeButton" class="btn btn-success"
                                             {% if not (show_analysis and analysis) %}disabled{% endif %}>
-                                        <i class="bi bi-robot"></i> Generate with Claude AI
+                                        <i class="bi bi-robot"></i> Generate with Claude AI (Recommended)
+                                    </button>
+                                    <button type="button" id="openaiButton" class="btn btn-primary"
+                                            {% if not (show_analysis and analysis) %}disabled{% endif %}>
+                                        <i class="bi bi-robot"></i> Generate with OpenAI
                                     </button>
                                 </div>
                             </form>
@@ -267,7 +271,7 @@
                 <div class="spinner-border text-primary mb-3" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
-                <h5>Generating JMX with Claude AI</h5>
+                <h5 id="loadingModalTitle">Generating JMX with AI</h5>
                 <p class="mb-0">Please wait while we create your optimized test plan...</p>
             </div>
         </div>
@@ -308,7 +312,7 @@
         border-bottom-color: #dee2e6;
     }
 
-    #claudeButton:disabled {
+    #claudeButton:disabled, #openaiButton:disabled {
         opacity: 0.65;
         cursor: not-allowed;
     }
@@ -351,11 +355,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Postman Analysis Specific Functionality
     const analyzeForm = document.getElementById('analyzeForm');
     const claudeButton = document.getElementById('claudeButton');
+    const openaiButton = document.getElementById('openaiButton');
     const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+    const loadingModalTitle = document.getElementById('loadingModalTitle');
 
-    // Enable Claude button if analysis results are shown
-    if (document.querySelector('#analysisAccordion') && claudeButton) {
-        claudeButton.disabled = false;
+    // Enable AI buttons if analysis results are shown
+    if (document.querySelector('#analysisAccordion')) {
+        if (claudeButton) claudeButton.disabled = false;
+        if (openaiButton) openaiButton.disabled = false;
     }
 
     // Handle Claude button click
@@ -367,7 +374,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            // Show loading modal
+            // Show loading modal with Claude-specific text
+            loadingModalTitle.textContent = "Generating JMX with Claude AI";
             loadingModal.show();
 
             // Create FormData with the analyzed file
@@ -391,6 +399,55 @@ document.addEventListener('DOMContentLoaded', function() {
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = `claude_${fileInput.files[0].name.replace('.json', '.jmx')}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert(error.error || 'Failed to generate JMX file');
+            })
+            .finally(() => {
+                loadingModal.hide();
+            });
+        });
+    }
+    
+    // Handle OpenAI button click
+    if (openaiButton) {
+        openaiButton.addEventListener('click', function() {
+            const fileInput = analyzeForm.querySelector('input[type="file"]');
+            if (!fileInput || !fileInput.files.length) {
+                alert('Please analyze a Postman collection first');
+                return;
+            }
+
+            // Show loading modal with OpenAI-specific text
+            loadingModalTitle.textContent = "Generating JMX with OpenAI";
+            loadingModal.show();
+
+            // Create FormData with the analyzed file
+            const formData = new FormData();
+            formData.append('postman_file', fileInput.files[0]);
+
+            // Make AJAX request to generate JMX with OpenAI using the correct endpoint
+            fetch('/generate_jmx_with_openai', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw err; });
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                // Create download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `openai_${fileInput.files[0].name.replace('.json', '.jmx')}`;
                 document.body.appendChild(a);
                 a.click();
                 window.URL.revokeObjectURL(url);
@@ -435,10 +492,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     void resultsContainer.offsetWidth;
                     newAnalysis.style.opacity = '1';
                     
-                    // Enable Claude button
-                    if (claudeButton) {
-                        claudeButton.disabled = false;
-                    }
+                    // Enable AI buttons
+                    if (claudeButton) claudeButton.disabled = false;
+                    if (openaiButton) openaiButton.disabled = false;
                 }
             })
             .catch(error => {

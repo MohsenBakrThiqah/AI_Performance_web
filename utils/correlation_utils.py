@@ -5,7 +5,8 @@ import anthropic
 import os
 import uuid
 from flask import current_app
-from config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
+from config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL, OPENAI_API_KEY, OPENAI_MODEL
+import openai  # Add import for OpenAI
 
 
 def is_valid_xml_char(codepoint):
@@ -335,6 +336,81 @@ def generate_correlated_jmx_with_claude(correlation_results, xml_path):
 
     except Exception as e:
         current_app.logger.error(f"Error generating JMX with Claude: {str(e)}")
+        raise
+
+
+def generate_correlated_jmx_with_openai(correlation_results, xml_path):
+    """Generate a JMX file with correlated requests using OpenAI."""
+    try:
+        client = openai.OpenAI(api_key=OPENAI_API_KEY)
+
+        # Get filtered XML samples and summarize them
+        original_samples = get_filtered_samples(xml_path, correlation_results)
+        summarized_samples = [
+            summarize_http_sample(sample) 
+            for sample in original_samples
+            if sample
+        ]
+        
+        # Prepare correlation data
+        requests_info = []
+        for result in correlation_results:
+            correlated_params = [p for p in result['params'] if p['correlated']]
+            if correlated_params:
+                requests_info.append({
+                    'label': result['label'],
+                    'url': result['url'],
+                    'method': result['method'],
+                    'correlations': [{
+                        'param': p['param'],
+                        'value': p['value'],
+                        'pattern': p['first_source']['matches'][0] if p['first_source']['matches'] else None,
+                        'source_label': p['first_source']['label']
+                    } for p in correlated_params]
+                })
+
+        prompt = (
+            "You are a senior performance test engineer specializing in JMeter test design. "
+            "Create a complete JMeter JMX test plan based on the provided HTTP samples and correlation requirements.\n\n"
+            "Requirements:\n"
+            "1. Generate a properly structured JMeter test plan with ThreadGroup and all necessary HTTP requests\n"
+            "2. Implement JSON/RegEx extractors for all identified correlations\n"
+            "3. Replace all dynamic parameters with JMeter variables using the proper syntax\n"
+            "4. Add appropriate assertions and listeners for performance testing\n"
+            "5. Ensure the output is valid JMX XML that can be directly imported into JMeter without modifications\n\n"
+            "=== HTTP Samples ===\n"
+            f"{json.dumps(summarized_samples, indent=2)}\n\n"
+            "=== Correlation Requirements ===\n"
+            f"{json.dumps(requests_info, indent=2)}\n\n"
+            "Respond with ONLY the complete, valid JMeter JMX XML content. Include all necessary XML declarations "
+            "and JMeter components."
+        )
+
+        # Get response from OpenAI
+        response = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[
+                {"role": "system", "content": "You are a performance test engineer specializing in JMeter test plans. Return only valid JMX XML content."},
+                {"role": "user", "content": prompt}
+            ],
+            max_completion_tokens=100000,
+        )
+
+        jmx_content = extract_jmx_xml(response.choices[0].message.content)
+
+        if jmx_content.strip():
+            output_path = os.path.join(
+                current_app.config['UPLOAD_FOLDER'],
+                f"openai_test_plan_{uuid.uuid4().hex[:8]}.jmx"
+            )
+            with open(output_path, "w", encoding="utf-8") as f:
+                f.write(jmx_content)
+            return output_path
+        else:
+            raise ValueError("OpenAI returned no valid JMX content")
+
+    except Exception as e:
+        current_app.logger.error(f"Error generating JMX with OpenAI: {str(e)}")
         raise
 
 

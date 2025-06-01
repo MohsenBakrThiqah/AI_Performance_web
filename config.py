@@ -5,6 +5,10 @@ from dotenv import load_dotenv
 ANTHROPIC_API_KEY = "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"
 ANTHROPIC_MODEL = "claude-3-7-sonnet-20250219"
 
+# OpenAI API Client configuration
+OPENAI_API_KEY = "sk-proj-3LEJyNSnWV3CPZKTt0WuT3BlbkFJgud3qBm7ZQVfZd9ojuL3"
+OPENAI_MODEL = "o3-2025-04-16"
+
 
 load_dotenv()
 

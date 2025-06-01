@@ -8,8 +8,9 @@ from flask import Flask, render_template, request, redirect, url_for, flash, sen
 from werkzeug.utils import secure_filename
 from config import Config
 from utils.report_utils import generate_jmeter_report
-from utils.correlation_utils import analyze_jmeter_correlations, generate_correlated_jmx_with_claude
-from utils.postman_utils import analyze_postman_collection, convert_postman_to_jmx, ask_claude_for_jmx
+from utils.correlation_utils import analyze_jmeter_correlations, generate_correlated_jmx_with_claude, \
+    generate_correlated_jmx_with_openai
+from utils.postman_utils import analyze_postman_collection, convert_postman_to_jmx, ask_claude_for_jmx, ask_openai_for_jmx
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -120,11 +121,24 @@ def create_app(config_class=Config):
                         return send_file(
                             jmx_path,
                             as_attachment=True,
-                            download_name=f"correlated_test_plan_{uuid.uuid4().hex[:8]}.jmx",
+                            download_name=f"claudeai_test_plan_{uuid.uuid4().hex[:8]}.jmx",
                             mimetype='application/xml'
                         )
                     except Exception as e:
                         app.logger.error(f"Error generating JMX with Claude: {str(e)}")
+                        flash('Error generating JMX file. Please try again.', 'error')
+
+                if request.form.get('use_openai') == 'on' and results:
+                    try:
+                        jmx_path = generate_correlated_jmx_with_openai(results, filepath)  # Changed from generate_correlated_jmx_with_claude
+                        return send_file(
+                            jmx_path,
+                            as_attachment=True,
+                            download_name=f"openai_test_plan_{uuid.uuid4().hex[:8]}.jmx",  # Changed prefix
+                            mimetype='application/xml'
+                        )
+                    except Exception as e:
+                        app.logger.error(f"Error generating JMX with OpenAI: {str(e)}")  # Updated error message
                         flash('Error generating JMX file. Please try again.', 'error')
 
                 return render_template('correlations.html', 
@@ -173,6 +187,7 @@ def create_app(config_class=Config):
                             postman_json = json.load(f)
                         correlation_data = analyze_postman_collection(upload_path)
                         output_path = ask_claude_for_jmx(postman_json, correlation_data)
+                        # output_path = ask_openai_for_jmx(postman_json, correlation_data)
                     else:
                         output_path = convert_postman_to_jmx(upload_path)
 
@@ -188,6 +203,42 @@ def create_app(config_class=Config):
                 return redirect(request.url)
 
         return render_template('postman.html', show_analysis=False)
+
+    @app.route('/generate_jmx_with_openai', methods=['POST'])
+    def generate_jmx_with_openai():
+        # Get the filename from session that was stored during analysis
+        if 'analyzed_file' not in session:
+            return jsonify({"error": "No analyzed file found. Please analyze the collection first."}), 400
+
+        filename = session['analyzed_file']
+        upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+        try:
+            # Verify the file still exists
+            if not os.path.exists(upload_path):
+                return jsonify({"error": "Analyzed file no longer available. Please upload again."}), 400
+
+            # Analyze the collection for correlations
+            with open(upload_path, 'r', encoding='utf-8') as f:
+                postman_json = json.load(f)
+
+            correlation_data = analyze_postman_collection(upload_path)
+
+            # Generate JMX with Claude
+            # jmx_path = ask_claude_for_jmx(postman_json, correlation_data)
+            jmx_path = ask_openai_for_jmx(postman_json, correlation_data)
+
+            # Return the generated JMX file
+            return send_file(
+                jmx_path,
+                as_attachment=True,
+                download_name=f"claude_{filename.replace('.json', '.jmx')}",
+                mimetype='application/xml'
+            )
+
+        except Exception as e:
+            app.logger.error(f"Error in JMX generation: {str(e)}")
+            return jsonify({"error": str(e)}), 500
 
     @app.route('/generate_jmx_with_claude', methods=['POST'])
     def generate_jmx_with_claude():
@@ -211,6 +262,7 @@ def create_app(config_class=Config):
 
             # Generate JMX with Claude
             jmx_path = ask_claude_for_jmx(postman_json, correlation_data)
+            # jmx_path = ask_openai_for_jmx(postman_json, correlation_data)
 
             # Return the generated JMX file
             return send_file(
@@ -223,6 +275,7 @@ def create_app(config_class=Config):
         except Exception as e:
             app.logger.error(f"Error in JMX generation: {str(e)}")
             return jsonify({"error": str(e)}), 500
+
 
     @app.route('/favicon.ico')
     def favicon():

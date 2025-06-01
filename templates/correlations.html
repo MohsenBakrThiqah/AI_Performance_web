@@ -29,11 +29,22 @@
                 </div>
             </div>
 
-            <div class="form-check mb-3">
-                <input class="form-check-input" type="checkbox" id="use_claude" name="use_claude">
-                <label class="form-check-label" for="use_claude">
-                    Generate JMX file using Claude AI (includes correlations)
-                </label>
+            <div class="mb-4">
+                <div class="form-check mb-2">
+                    <input class="form-check-input ai-option" type="checkbox" id="use_claude" name="use_claude">
+                    <label class="form-check-label" for="use_claude">
+                        Generate JMX file using Claude AI (includes correlations) (Recommended)
+                    </label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input ai-option" type="checkbox" id="use_openai" name="use_openai">
+                    <label class="form-check-label" for="use_openai">
+                        Generate JMX file using OpenAI (includes correlations)
+                    </label>
+                </div>
+                <div class="form-text">
+                    Select one AI service to automatically generate a correlated JMX file
+                </div>
             </div>
 
             <div class="d-grid gap-2 d-md-flex justify-content-md-end">
@@ -245,6 +256,37 @@
                 }
             });
         });
+
+        // Make AI checkboxes mutually exclusive
+        const aiOptions = document.querySelectorAll('.ai-option');
+        
+        aiOptions.forEach(option => {
+            option.addEventListener('change', function() {
+                if (this.checked) {
+                    // Uncheck all other options
+                    aiOptions.forEach(otherOption => {
+                        if (otherOption !== this) {
+                            otherOption.checked = false;
+                        }
+                    });
+                }
+            });
+        });
     });
 </script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .accordion-button:not(.collapsed) {
+        background-color: rgba(13, 110, 253, 0.05);
+        color: #0d6efd;
+    }
+    
+    .accordion-button:focus {
+        box-shadow: none;
+    }
+    
+    /* Add any additional styles as needed */
+</style>
 {% endblock %}

@@ -10,7 +10,9 @@ import tempfile
 from urllib.parse import urlparse
 # import html
 import anthropic
-from config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
+import openai
+
+from config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL, OPENAI_API_KEY, OPENAI_MODEL
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -88,7 +90,7 @@ def edit_html_and_js(html_path, js_path, stats_path, form_data):
                                               f"THIQAH Confidential: {form_data['project_name']} Performance Test Report")
         # print(os.path.join(os.getcwd(), "static", "images", "Cover.png"))
         modified_html = modified_html.replace("</title>",
-                                              "</title><img src=\"" + os.path.join(os.getcwd(), "static", "images", "Cover.png") + "\" alt=\"Cover Image\" style=\"width: "
+                                              "</title><img src=\"https://i.ibb.co/G35GLfK9/Cover.png\" alt=\"Cover Image\" style=\"width: "
                                                                                 "100%; height: 100vh; object-fit: cover; "
                                                                                 "break-after: page; display: none;\" "
                                                                                 "onload=\"this.style.display='none'; "
@@ -127,9 +129,10 @@ def edit_html_and_js(html_path, js_path, stats_path, form_data):
             f'<tr><td>Findings</td><td>{findings_html}</td></tr>',
             modified_html
         )
-        modified_html = modified_html.replace("</body>", "<img src=\"" + os.path.join(os.getcwd(), "static", "images", "Thanks.png") + "\" alt=\"Cover Image\" style=\"width: 100%; height: 100vh; object-fit: cover; break-after: page; display: none;\" onload=\"this.style.display='none'; window.matchMedia('print').addListener(mql => mql.matches &amp;&amp; (this.style.display='block')); window.onafterprint = () => this.style.display='none';\"></body>")
+        modified_html = modified_html.replace("</body>", "<img src=\"https://i.ibb.co/8L9RQ6pB/Thanks.png\" alt=\"Cover Image\" style=\"width: 100%; height: 100vh; object-fit: cover; break-after: page; display: none;\" onload=\"this.style.display='none'; window.matchMedia('print').addListener(mql => mql.matches &amp;&amp; (this.style.display='block')); window.onafterprint = () => this.style.display='none';\"></body>")
         # GPT analysis if enabled
         if form_data.get('use_gpt', False):
+            # gpt_response = ask_claude(statistics_content, form_data)
             gpt_response = ask_gpt(statistics_content, form_data)
             errors_analysis = analyze_errors(js_path)
             if errors_analysis:
@@ -176,6 +179,7 @@ def analyze_errors(js_path):
 
         if match and match2:
             errors_analysis = "First JSON object:\n" + match.group(1) + "\n\n Second JSON object:\n" + match2.group(1)
+            # return ask_claude_errors(errors_analysis)
             return ask_gpt_errors(errors_analysis)
         return None
 
@@ -184,7 +188,7 @@ def analyze_errors(js_path):
         return None
 
 
-def ask_gpt_errors(prompt):
+def ask_claude_errors(prompt):
     """Get error analysis from Claude"""
     try:
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -211,8 +215,36 @@ def ask_gpt_errors(prompt):
         logging.error(f"Error getting Claude error analysis: {str(e)}")
         return None
 
+def ask_gpt_errors(prompt):
+    try:
+        client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
-def ask_gpt(statistics_content, form_data):
+        response = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            max_completion_tokens=100000,
+            messages=[
+                {"role": "system", "content": "You are a specialized Performance Test Engineer with extensive "
+                                              "experience in analyzing JMeter test results. Your expertise includes "
+                                              "identifying performance bottlenecks, error patterns, and root causes "
+                                              "in load test data."},
+                {"role": "user",
+                 "content": f"I need your expert analysis of these JMeter error results from a load test. The data is provided as JSON extracts from dashboard.js:\n\n{prompt}\n\n"
+                            f"Please provide me with:\n"
+                            f"1. A concise, actionable analysis of these errors\n"
+                            f"2. Specific recommendations for where to investigate to find root causes\n"
+                            f"3. The most likely reasons these errors occurred based on error patterns\n"
+                            f"4. Any correlations between error types and specific transactions\n\n"
+                            f"If no errors are found in the provided JSON, clearly state that no errors were detected and no analysis is needed.\n"
+                            f"Format your response in short, well-organized paragraphs with clear headings."}
+            ]
+        )
+
+        content = response.choices[0].message.content
+        return content
+    except Exception as e:
+        print("An error occurred while fetching response from GPT:", str(e))
+        return None
+def ask_claude(statistics_content, form_data):
     """Get analysis from Claude"""
     try:
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -238,6 +270,37 @@ def ask_gpt(statistics_content, form_data):
     except Exception as e:
         logging.error(f"Error getting Claude analysis: {str(e)}")
         return "Claude analysis failed due to an error"
+
+
+def ask_gpt(statistics_content, form_data):
+    try:
+        client = openai.OpenAI(api_key=OPENAI_API_KEY)
+
+        response = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            max_completion_tokens=100000,
+            messages=[
+                {"role": "system",
+                 "content": "You are a Performance test engineer"},
+                {"role": "user",
+                 "content": "You are a specialized Performance Test Engineer with extensive experience in analyzing JMeter test results. Your expertise includes identifying performance bottlenecks, error patterns, and root causes in load test data."
+                            f"Please analyze these JMeter performance test results:\n\n{statistics_content}\n\n"
+                            f"Thiqah Performance Standards:\n"
+                            f"- 90th percentile response time threshold (pct1ResTime): {form_data['api_threshold']} ms or below\n"
+                            f"- Error percentage threshold: {form_data['err_rate_threshold']}% or below\n\n"
+                            f"Provide your analysis in these two distinct sections:\n"
+                            f"1. EXECUTIVE SUMMARY: Overall test performance assessment with clear pass/fail status against Thiqah standards. Include key metrics, major bottlenecks, and critical findings.\n\n"
+                            f"2. PERFORMANCE BOTTLENECKS: Detailed analysis of the specific requests with highest response times or error rates. Include specific transaction names, their metrics, and targeted recommendations for improvement.\n\n"
+                            f"Focus on actionable insights that would help developers or system administrators improve performance. Be specific about which endpoints need attention."
+                 }
+            ]
+        )
+
+        content = response.choices[0].message.content
+        return content
+    except Exception as e:
+        print("An error occurred while fetching response from GPT:", str(e))
+        return None
 
 
 def generate_custom_html(form_data):
@@ -314,7 +377,7 @@ def generate_custom_html(form_data):
                     </tr>
                     <tr>
                         <td>Test Scope</td>
-                        <td>{form_data.get('scope', '').replace('n', '<br>')}</td>
+                        <td>{'<br>'.join(line for line in form_data.get('scope', '').splitlines())}</td>
                     </tr>
                 </table>
     '''

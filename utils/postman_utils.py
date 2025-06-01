@@ -8,9 +8,9 @@ from urllib.parse import urlparse
 import anthropic
 from anthropic import Anthropic
 from lxml import etree as ET
-# import openai
+from openai import OpenAI  # Add OpenAI import
 from flask import current_app
-from config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
+from config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL, OPENAI_API_KEY, OPENAI_MODEL
 
 
 def analyze_postman_collection(postman_file_path):
@@ -590,4 +590,56 @@ def ask_claude_for_jmx(postman_json, correlation_data):
 
     except Exception as e:
         current_app.logger.error(f"Error generating JMX with Claude: {str(e)}")
+        raise
+
+
+def ask_openai_for_jmx(postman_json, correlation_data):
+    try:
+        client = OpenAI(api_key=OPENAI_API_KEY)
+
+        prompt = (
+            "You are a senior QA automation engineer. Convert the following Postman collection into a valid Apache JMeter JMX test plan in XML format.\n\n"
+            "=== Postman Collection Summary ===\n"
+            f"{json.dumps(summarize_postman(postman_json), indent=2)}\n\n"
+            "=== Correlation Mapping ===\n"
+            f"{json.dumps(correlation_data, indent=2)}\n\n"
+            "Follow these detailed instructions to ensure the output is a structurally valid JMX file:\n"
+            "1. Create an XML-based JMeter Test Plan compatible with JMeter 5.5+.\n"
+            "2. Each element (ThreadGroup, Sampler, PostProcessor, etc.) must be followed by an empty <hashTree/> or a <hashTree> containing nested elements.\n"
+            "   - This is **mandatory** to prevent ClassCastException on load.\n"
+            "3. Use JSON Extractors (JSONPostProcessor) or regular expression extractors with the help of provided correlation mapping.\n"
+            "4. Reference extracted values using JMeter variables (e.g., ${token}).\n"
+            "5. Always escape XML-reserved characters in JSON or text: & → &amp;, < → &lt;, > → &gt;, \" → &quot;, ' → &apos;.\n"
+            "6. Add a Thread Group with default settings (e.g., 1 thread, 1 loop).\n"
+            "7. Ensure UTF-8 encoding and include the XML declaration at the top: <?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            "8. Do not include extra comments return a complete and valid .jmx XML document.\n"
+            "9. Validate that the output file opens cleanly in JMeter GUI without ClassCastException, XStream conversion errors, or missing hashTree nodes.\n"
+            "10. don't miss any request body data, or parameters .\n"
+        )
+
+        response = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[
+                {"role": "system", "content": "You are a senior QA automation engineer specializing in JMeter test plans."},
+                {"role": "user", "content": prompt}
+            ],
+            max_completion_tokens=100000,
+        )
+
+        full_text = response.choices[0].message.content
+        jmx_content = extract_jmx_xml(full_text)
+
+        if jmx_content.strip():
+            output_path = os.path.join(
+                current_app.config['UPLOAD_FOLDER'],
+                f"generated_test_plan_openai_{uuid.uuid4().hex[:8]}.jmx"
+            )
+            with open(output_path, "w", encoding="utf-8") as f:
+                f.write(jmx_content)
+            return output_path
+        else:
+            raise ValueError("OpenAI returned no valid JMX content")
+
+    except Exception as e:
+        current_app.logger.error(f"Error generating JMX with OpenAI: {str(e)}")
         raise
