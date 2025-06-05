@@ -5,6 +5,8 @@ import anthropic
 import os
 import uuid
 from flask import current_app
+from openai import OpenAI
+
 from config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL, OPENAI_API_KEY, OPENAI_MODEL
 import openai  # Add import for OpenAI
 
@@ -342,7 +344,11 @@ def generate_correlated_jmx_with_claude(correlation_results, xml_path):
 def generate_correlated_jmx_with_openai(correlation_results, xml_path):
     """Generate a JMX file with correlated requests using OpenAI."""
     try:
-        client = openai.OpenAI(api_key=OPENAI_API_KEY)
+        # client = openai.OpenAI(api_key=OPENAI_API_KEY)
+        client = OpenAI(
+                      base_url="https://openrouter.ai/api/v1",
+                      api_key="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",
+                    )
 
         # Get filtered XML samples and summarize them
         original_samples = get_filtered_samples(xml_path, correlation_results)
@@ -388,12 +394,12 @@ def generate_correlated_jmx_with_openai(correlation_results, xml_path):
 
         # Get response from OpenAI
         response = client.chat.completions.create(
-            model=OPENAI_MODEL,
+            model="deepseek/deepseek-r1:free",
             messages=[
                 {"role": "system", "content": "You are a performance test engineer specializing in JMeter test plans. Return only valid JMX XML content."},
                 {"role": "user", "content": prompt}
             ],
-            max_completion_tokens=100000,
+            # max_completion_tokens=100000,
         )
 
         jmx_content = extract_jmx_xml(response.choices[0].message.content)
