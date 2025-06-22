@@ -49,18 +49,7 @@ def create_app(config_class=Config):
                     'reopened_bugs': request.form.get('reopened_bugs'),
                     'release_report': request.form.get('release_report'),
                     'scope': request.form.get('scope'),
-                    'finding_1': request.form.get('finding_1'),
-                    'finding_2': request.form.get('finding_2'),
-                    'finding_3': request.form.get('finding_3'),
-                    'finding_4': request.form.get('finding_4'),
-                    'finding_5': request.form.get('finding_5'),
-                    'finding_6': request.form.get('finding_6'),
-                    'finding_7': request.form.get('finding_7'),
-                    'finding_8': request.form.get('finding_8'),
-                    'finding_9': request.form.get('finding_9'),
-                    'finding_10': request.form.get('finding_10'),
-                    'finding_11': request.form.get('finding_11'),
-                    'finding_12': request.form.get('finding_12'),
+                    'findings_text': request.form.get('findings_text'),
                     'use_gpt': request.form.get('use_gpt') == 'on'
                 }
 

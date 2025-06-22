@@ -302,3 +302,23 @@ textarea.form-control {
     border-radius: 3px;
     font-family: monospace;
 }
+
+/* Findings Textarea */
+#findings_text {
+    width: 100%;
+    min-height: 200px;
+    resize: vertical;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 10px;
+    font-family: monospace;
+    line-height: 1.5;
+    white-space: pre;
+    tab-size: 4;
+}
+
+#findings_text:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    outline: none;
+}

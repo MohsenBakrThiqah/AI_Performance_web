@@ -159,10 +159,11 @@
                             </div>
                             <div class="card-body">
                                 <ol>
-                                    <li>For each <span class="badge bg-success">Correlated</span> parameter, create a JSON Extractor in JMeter</li>
-                                    <li>Use the provided Regular expression to extract the value</li>
-                                    <li>Reference the extracted value in subsequent requests using <code>${variable_name}</code></li>
-                                    <li>For <span class="badge bg-secondary">Static</span> parameters, you can keep them as-is in your test plan</li>
+                                    <li>For each <span class="badge bg-success">Correlated</span> parameter, create a Regular Expression Extractor in JMeter.</li>
+                                    <li>Use the provided Regular expression to help you extract the value.</li>
+                                    <li>Reference the extracted value in subsequent requests using <code>${variable_name}</code>.</li>
+                                    <li>For <span class="badge bg-secondary">Static</span> parameters, you can keep them as-is in your test plan.</li>
+                                    <li>Not all Parameters with status <span class="badge bg-success">Correlated</span> must be correlated.</li>
                                 </ol>
                                 <div class="alert alert-warning mt-3">
                                     <strong>Tip:</strong> Always verify correlations by running your test plan with 1 user first.

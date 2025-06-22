@@ -120,15 +120,33 @@ def edit_html_and_js(html_path, js_path, stats_path, form_data):
             '<a href="index.html"><i class="fa fa-dashboard fa-fw"></i> Dashboard</a>\n<a href="content/Reports"><i class="fa fa-dashboard fa-fw"></i> Reports History</a>'
         )
 
-        # Add findings
-        findings = [v for k, v in form_data.items() if k.startswith('finding_') and v]
-        findings_html = "<br>".join([f"{i + 1}. {finding}" for i, finding in enumerate(findings)])
-        # print(findings_html)
+        # Add findings - preserve whitespace formatting
+        findings_text = form_data.get('findings_text', '')
+        
+        # Process the findings text to preserve indentation
+        findings_lines = findings_text.split('\n')
+        processed_lines = []
+        
+        for line in findings_lines:
+            # Convert leading spaces to non-breaking spaces to preserve indentation
+            if line.startswith(' '):
+                # Count leading spaces
+                leading_spaces = len(line) - len(line.lstrip(' '))
+                # Replace each leading space with &nbsp;
+                processed_line = '&nbsp;' * leading_spaces + line.lstrip(' ')
+                processed_lines.append(processed_line)
+            else:
+                processed_lines.append(line)
+        
+        findings_html = '<br>'.join(processed_lines)
+        
+        # Add CSS class for preserving whitespace
         modified_html = re.sub(
             r'<tr>\s*<td>Findings</td>\s*<td>""</td>\s*</tr>',
-            f'<tr><td>Findings</td><td>{findings_html}</td></tr>',
+            f'<tr><td>Findings</td><td class="preserve-whitespace">{findings_html}</td></tr>',
             modified_html
         )
+        
         modified_html = modified_html.replace("</body>", "<img src=\"https://i.ibb.co/8L9RQ6pB/Thanks.png\" alt=\"Cover Image\" style=\"width: 100%; height: 100vh; object-fit: cover; break-after: page; display: none;\" onload=\"this.style.display='none'; window.matchMedia('print').addListener(mql => mql.matches &amp;&amp; (this.style.display='block')); window.onafterprint = () => this.style.display='none';\"></body>")
         # GPT analysis if enabled
         if form_data.get('use_gpt', False):

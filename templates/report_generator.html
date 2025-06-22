@@ -175,12 +175,9 @@
                 </div>
                 <div class="collapse" id="findings">
                     <div class="card-body">
-                        {% for i in range(1, 13) %}
                         <div class="mb-3">
-                            <label for="finding_{{ i }}" class="form-label">Finding {{ i }}</label>
-                            <input type="text" class="form-control" id="finding_{{ i }}" name="finding_{{ i }}">
+                            <textarea class="form-control" id="findings_text" name="findings_text" rows="10" placeholder="Enter your findings here..."></textarea>
                         </div>
-                        {% endfor %}
                     </div>
                 </div>
             </div>
