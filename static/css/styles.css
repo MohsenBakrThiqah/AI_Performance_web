@@ -322,3 +322,40 @@ textarea.form-control {
     box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
     outline: none;
 }
+
+/* Formatting help styles */
+.formatting-help {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+}
+
+.formatting-help code {
+    background-color: #f8f9fa;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 0.85em;
+}
+
+/* Preserve whitespace for findings */
+.preserve-whitespace {
+    white-space: pre-wrap !important;
+    font-family: monospace;
+    line-height: 1.5;
+}
+
+.preserve-whitespace p {
+    margin-bottom: 0.8em;
+}
+
+.preserve-whitespace strong {
+    color: #0d6efd;
+    display: block;
+    margin-top: 0.5em;
+    margin-bottom: 0.3em;
+}
+
+.preserve-whitespace p br {
+    content: "";
+    margin-bottom: 0.3em;
+    display: block;
+}

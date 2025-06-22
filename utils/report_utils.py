@@ -120,25 +120,121 @@ def edit_html_and_js(html_path, js_path, stats_path, form_data):
             '<a href="index.html"><i class="fa fa-dashboard fa-fw"></i> Dashboard</a>\n<a href="content/Reports"><i class="fa fa-dashboard fa-fw"></i> Reports History</a>'
         )
 
-        # Add findings - preserve whitespace formatting
+        # Add findings - preserve whitespace and handle formatting
         findings_text = form_data.get('findings_text', '')
         
-        # Process the findings text to preserve indentation
+        # Process the findings text to preserve indentation and add formatting
         findings_lines = findings_text.split('\n')
         processed_lines = []
         
+        # Track if the previous line was empty
+        prev_line_empty = False
+        
         for line in findings_lines:
-            # Convert leading spaces to non-breaking spaces to preserve indentation
-            if line.startswith(' '):
+            # Skip consecutive empty lines
+            if not line.strip():
+                if not prev_line_empty:  # Only add one empty line
+                    processed_lines.append('')
+                    prev_line_empty = True
+                continue
+            else:
+                prev_line_empty = False
+            
+            # Handle bold text (**text**)
+            line = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', line)
+            
+            # Handle bullet points
+            if line.strip().startswith('* ') or line.strip().startswith('- '):
+                bullet_content = line.strip()[2:]
+                # Count leading spaces before the bullet
+                leading_spaces = len(line) - len(line.lstrip())
+                # Create bullet point with proper indentation
+                line = '&nbsp;' * leading_spaces + '• ' + bullet_content
+            
+            # Handle numbered lists (preserve the number)
+            elif re.match(r'\s*\d+\.\s', line):
+                # Keep the original formatting but ensure it's preserved in HTML
+                leading_spaces = len(line) - len(line.lstrip())
+                line = '&nbsp;' * leading_spaces + line.lstrip()
+            
+            # Handle other indentation
+            elif line.startswith(' '):
                 # Count leading spaces
                 leading_spaces = len(line) - len(line.lstrip(' '))
                 # Replace each leading space with &nbsp;
-                processed_line = '&nbsp;' * leading_spaces + line.lstrip(' ')
-                processed_lines.append(processed_line)
-            else:
-                processed_lines.append(line)
+                line = '&nbsp;' * leading_spaces + line.lstrip(' ')
+            
+            processed_lines.append(line)
         
-        findings_html = '<br>'.join(processed_lines)
+        # Use <p> tags for paragraphs instead of <br> for every line
+        findings_html = ''
+        current_paragraph = []
+        
+        for i, line in enumerate(processed_lines):
+            if not line:  # Empty line indicates paragraph break
+                if current_paragraph:
+                    # Join the lines in this paragraph, but avoid adding <br> after formatting elements
+                    paragraph_html = ''
+                    for j, para_line in enumerate(current_paragraph):
+                        # Check if this is a formatting line and there's a next line in this paragraph
+                        is_strong = '</strong>' in para_line
+                        # Improved regex pattern to better match numbered lists
+                        is_numbered = bool(re.search(r'&nbsp;*\d+\.', para_line))
+                        is_bullet = '• ' in para_line
+                        is_last_in_paragraph = j == len(current_paragraph) - 1
+                        
+                        # Add the line
+                        paragraph_html += para_line
+                        
+                        # Print debugging info
+                        # print(f"Line: {para_line}, is_numbered: {is_numbered}, match: {re.search(r'&nbsp;*\d+\.', para_line)}")
+                        
+                        # Only add <br> if it's not a strong tag or numbered list
+                        # Also don't add <br> if it's the last line in the paragraph
+                        if not is_last_in_paragraph and not is_strong and not is_numbered:
+                            paragraph_html += '<br>'
+                    
+                    findings_html += '<p>' + paragraph_html + '</p>'
+                    current_paragraph = []
+            else:
+                current_paragraph.append(line)
+        
+        # Don't forget the last paragraph
+        if current_paragraph:
+            paragraph_html = ''
+            for j, para_line in enumerate(current_paragraph):
+                is_strong = '</strong>' in para_line
+                # Improved regex pattern to better match numbered lists
+                is_numbered = bool(re.search(r'&nbsp;*\d+\.', para_line))
+                is_bullet = '• ' in para_line
+                is_last_in_paragraph = j == len(current_paragraph) - 1
+                
+                paragraph_html += para_line
+                
+                # Only add <br> if it's not a strong tag or numbered list
+                # Also don't add <br> if it's the last line in the paragraph
+                if not is_last_in_paragraph and not is_strong and not is_numbered:
+                    paragraph_html += '<br>'
+            
+            findings_html += '<p>' + paragraph_html + '</p>'
+        
+        # Add CSS for better whitespace handling
+        css_for_whitespace = """
+        <style>
+        .preserve-whitespace {
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .preserve-whitespace p {
+            margin-bottom: 0.5em;
+        }
+        .preserve-whitespace strong {
+            color: #0d6efd;
+        }
+        </style>
+        """
+        
+        modified_html = modified_html.replace('</head>', f'{css_for_whitespace}</head>')
         
         # Add CSS class for preserving whitespace
         modified_html = re.sub(
@@ -154,13 +250,13 @@ def edit_html_and_js(html_path, js_path, stats_path, form_data):
             gpt_response = ask_gpt(statistics_content, form_data)
             errors_analysis = analyze_errors(js_path)
             if errors_analysis:
-                gpt_response += f"<br><br><p class='dashboard-title'>Claude AI - Errors Investigation Recommendation</p>{errors_analysis}"
+                gpt_response += f"<br><br><p class='dashboard-title'>OpenAI GPT 4.1 - Errors Investigation Recommendation</p>{errors_analysis}"
 
             gpt_response = gpt_response.replace('\n', '<br>').replace('#', '').replace('*', '')
 
             modified_html = modified_html.replace(
                 '<script src="sbadmin2-1.0.7/bower_components/jquery/dist/jquery.min.js"></script>',
-                f'<script src="sbadmin2-1.0.7/bower_components/jquery/dist/jquery.min.js"></script>\n<br><br><p class="dashboard-title">Claude AI Statistics Analysis</p>{gpt_response}'
+                f'<script src="sbadmin2-1.0.7/bower_components/jquery/dist/jquery.min.js"></script>\n<br><br><p class="dashboard-title">OpenAI GPT 4.1 -  Statistics Analysis</p>{gpt_response}'
             )
 
         # Save modified HTML

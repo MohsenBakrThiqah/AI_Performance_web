@@ -176,7 +176,24 @@
                 <div class="collapse" id="findings">
                     <div class="card-body">
                         <div class="mb-3">
-                            <textarea class="form-control" id="findings_text" name="findings_text" rows="10" placeholder="Enter your findings here..."></textarea>
+                            <div class="formatting-help mb-2">
+                                <small class="text-muted">
+                                    Formatting: <strong>**bold and Colored**</strong>, 
+                                    <code>1. Numbered list</code>, 
+                                    <code>* Bullet point</code>, 
+                                    <code>- Bullet point</code>
+                                </small>
+                            </div>
+                            <textarea class="form-control" id="findings_text" name="findings_text" rows="10" 
+                                placeholder="Enter your findings here...
+Examples:
+**Response time:**
+    1. High response time in login API
+    2. Dashboard page load is slow
+
+**Errors:**
+    * Connection timeout in payment process
+    * Database locks in high concurrency"></textarea>
                         </div>
                     </div>
                 </div>
