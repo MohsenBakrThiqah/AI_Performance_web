@@ -1,14 +1,16 @@
 import re
 import json
+import logging
 from lxml import etree as ET
 import anthropic
 import os
 import uuid
+import urllib.parse  # Add for URL encoding/decoding
 from flask import current_app
 from openai import OpenAI
 
 from config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL, OPENAI_API_KEY, OPENAI_MODEL
-import openai  # Add import for OpenAI
+import openai
 
 
 def is_valid_xml_char(codepoint):
@@ -62,6 +64,40 @@ def extract_dynamic_patterns(text, value):
         return []
 
 
+def get_encoding_variations(value):
+    """
+    Generate variations of the value with different URL encoding/decoding
+    to help match parameters across requests/responses
+    """
+    variations = set([value])  # Start with original value
+    
+    try:
+        # Try to decode as URL-encoded string
+        decoded = urllib.parse.unquote(value)
+        if decoded != value:
+            variations.add(decoded)
+        
+        # Try to encode as URL-encoded string
+        encoded = urllib.parse.quote(value)
+        if encoded != value:
+            variations.add(encoded)
+            
+        # Special handling for base64 strings that often end with '=' and get encoded as %3D
+        if value.endswith('=='):
+            variations.add(value.replace('==', '%3D%3D'))
+        elif value.endswith('='):
+            variations.add(value.replace('=', '%3D'))
+        elif value.endswith('%3D%3D'):
+            variations.add(value.replace('%3D%3D', '=='))
+        elif value.endswith('%3D'):
+            variations.add(value.replace('%3D', '='))
+    except Exception as e:
+        # If any encoding/decoding errors occur, just use the original value
+        current_app.logger.debug(f"Encoding variation error for '{value}': {str(e)}")
+    
+    return list(variations)
+
+
 def extract_params(text):
     params = {}
     if not text:
@@ -71,7 +107,12 @@ def extract_params(text):
     pairs = re.findall(r'([\w\.-]+)=([^&]*)', text)
     if pairs:
         for key, value in pairs:
-            params[key] = value
+            # URL-decode the value
+            try:
+                decoded_value = urllib.parse.unquote(value)
+                params[key] = decoded_value
+            except:
+                params[key] = value
         return params
 
     # Then try to parse as JSON
@@ -115,9 +156,14 @@ def normalize_url(url):
 
 
 def url_matches_filter(request_url, filters):
+    if not filters:
+        return True
+        
     normalized_request = normalize_url(request_url)
     for filter_val in filters:
         normalized_filter = normalize_url(filter_val)
+        if not normalized_filter:  # Empty filter means match all
+            return True
         if normalized_filter in normalized_request:
             return True
     return False
@@ -127,32 +173,102 @@ def analyze_jmeter_correlations(xml_path, url_filter=''):
     requests = []
     responses = []
     all_previous_responses = []
+    skipped_samples = 0
+    total_samples = 0
+    processed_labels = set()  # Track which labels we've processed
 
     def collect_samples(node):
-        if node.tag.endswith('httpSample') or node.tag.endswith('sample'):
-            url = node.findtext('java.net.URL')
-            request_body = node.findtext('queryString') or ''
-            method = node.findtext('method') or ''
-            request_header = node.findtext('requestHeader') or ''
-            label = node.get('lb') or 'No_Label'
+        nonlocal skipped_samples, total_samples
+        
+        # Enhanced sample node detection logic
+        is_sample = False
+        tag_name = ""
+        if node.tag is not None:
+            tag_name = node.tag.split('}')[-1] if '}' in node.tag else node.tag
+            is_sample = (
+                tag_name.endswith('Sample') or 
+                tag_name == 'sample' or 
+                tag_name == 'httpSample' or
+                'httpsample' in tag_name.lower() or
+                'HTTPSampler' in tag_name
+            )
+        
+        if is_sample:
+            total_samples += 1
+            
+            # More robust URL extraction with multiple fallbacks
+            url = None
+            # Try all possible locations for URL
+            for url_path in ['java.net.URL', 'URL', 'url', './/java.net.URL', './/URL', './/url']:
+                try:
+                    url_elem = node.find(url_path)
+                    if url_elem is not None and url_elem.text:
+                        url = url_elem.text
+                        break
+                    
+                    # Try as a direct text element
+                    url_text = node.findtext(url_path)
+                    if url_text:
+                        url = url_text
+                        break
+                except:
+                    continue
+                
+            # Also check for samplerData which may contain the URL for OPTIONS requests
+            if not url:
+                sampler_data = node.findtext('samplerData') or ''
+                if sampler_data:
+                    url_match = re.search(r'(https?://[^\s]+)', sampler_data)
+                    if url_match:
+                        url = url_match.group(1)
+            
+            # Skip if no URL found
+            if not url:
+                skipped_samples += 1
+                label = node.get('lb') or 'No_Label'
+                method = node.findtext('method') or node.get('mc', 'UNKNOWN')
+                current_app.logger.debug(f"Skipping sample without URL: Label={label}, Method={method}")
+                
+                # Try to extract any data available for debugging
+                for elem in node:
+                    if elem.tag:
+                        tag = elem.tag.split('}')[-1]
+                        current_app.logger.debug(f"  Available data: {tag}={elem.text}")
+            else:
+                request_body = node.findtext('queryString') or ''
+                method = node.findtext('method') or node.get('mc', '')
+                request_header = node.findtext('requestHeader') or ''
+                label = node.get('lb') or 'No_Label'
+                
+                # Track if we've already processed a similar request to avoid duplicates
+                processed_labels.add(label)
 
-            response_header = node.findtext('responseHeader') or ''
-            response_body = node.findtext('responseData') or ''
-
-            if url:
+                # Better handling of response data
+                response_header = node.findtext('responseHeader') or ''
+                response_body = node.findtext('responseData') or ''
+                
+                # Handle non-text response data
+                if not response_body or 'Non-TEXT response data' in response_body:
+                    response_body = f"[Binary data: {label}]"
+                    current_app.logger.debug(f"Binary response detected for {label}, URL: {url}")
+                
+                # Build request and response objects
                 requests.append({
                     'url': url,
                     'method': method,
                     'requestHeader': request_header,
                     'requestBody': request_body,
                     'label': label,
+                    'raw_node': node  # Store reference to original node for debugging
                 })
+                
                 responses.append({
                     'responseHeader': response_header,
                     'responseBody': response_body,
                     'full_response': response_header + '\n' + response_body,
                 })
 
+        # Process all child nodes recursively
         for child in node:
             collect_samples(child)
 
@@ -162,19 +278,56 @@ def analyze_jmeter_correlations(xml_path, url_filter=''):
         raise RuntimeError(f"Failed to parse cleaned XML: {e}")
 
     collect_samples(root)
+    
+    # Enhanced logging
+    current_app.logger.info(f"Collected {len(requests)}/{total_samples} requests from XML. Skipped: {skipped_samples}")
+    current_app.logger.info(f"Processed labels: {', '.join(sorted(processed_labels))}")
 
     url_filters = [u.strip() for u in url_filter.split(',')] if url_filter else []
 
     results = []
     for idx, req in enumerate(requests):
+        # Skip invalid requests
+        if not req['url']:
+            continue
+            
+        # Improved URL filter logic
         if url_filters and not url_matches_filter(req['url'], url_filters):
+            current_app.logger.debug(f"Filtered out URL: {req['url']}")
             continue
 
-        url_query = req['url'].split('?', 1)[1] if req['url'] and '?' in req['url'] else ''
+        # Extract parameters from both URL and request body
+        url_query = ''
+        if req['url'] and '?' in req['url']:
+            parts = req['url'].split('?', 1)
+            if len(parts) > 1:
+                url_query = parts[1]
+                
         params = extract_params(url_query)
-        params.update(extract_params(req['requestBody']))
+        body_params = extract_params(req['requestBody'])
+        params.update(body_params)
+
+        # Try to extract parameters from headers for more coverage
+        if not params and req['requestHeader']:
+            content_type = ""
+            for line in req['requestHeader'].splitlines():
+                if "Content-Type:" in line:
+                    content_type = line.split(":", 1)[1].strip()
+            
+            # If it's a form submission, try to parse the body differently
+            if "application/x-www-form-urlencoded" in content_type:
+                body_params = extract_params(req['requestBody'])
+                params.update(body_params)
 
         if not params:
+            current_app.logger.debug(f"No parameters found for request: {req['label']}, URL: {req['url']}")
+            # Include parameterless requests in results anyway
+            results.append({
+                'label': req['label'],
+                'method': req['method'],
+                'url': req['url'],
+                'params': []
+            })
             continue
 
         param_details = []
@@ -182,16 +335,34 @@ def analyze_jmeter_correlations(xml_path, url_filter=''):
             if not param_value:
                 continue
 
-            # Find all previous responses that contain this parameter value
+            # Generate variations of the parameter value with different encodings
+            param_variations = get_encoding_variations(param_value)
+            
+            # Find all previous responses that contain this parameter value or its variations
             matching_responses = []
             for resp_idx, resp in enumerate(responses[:idx]):
-                if param_value in resp['full_response']:
-                    matches = extract_dynamic_patterns(resp['full_response'], param_value)
-                    matching_responses.append({
-                        'index': resp_idx,
-                        'label': requests[resp_idx]['label'],
-                        'matches': matches[:3]  # Limit to first 3 matches
-                    })
+                if not resp['full_response']:
+                    continue
+                    
+                matched = False
+                best_match = None
+                
+                # Try each variation of the parameter value
+                for variation in param_variations:
+                    if variation in resp['full_response']:
+                        matches = extract_dynamic_patterns(resp['full_response'], variation)
+                        if matches:
+                            matched = True
+                            best_match = {
+                                'index': resp_idx,
+                                'label': requests[resp_idx]['label'],
+                                'matches': matches[:3],  # Limit to first 3 matches
+                                'matched_variation': variation
+                            }
+                            break
+                
+                if matched and best_match:
+                    matching_responses.append(best_match)
 
             if matching_responses:
                 first_match = matching_responses[0]
@@ -201,6 +372,7 @@ def analyze_jmeter_correlations(xml_path, url_filter=''):
                     'param': param_name,
                     'value': param_value,
                     'correlated': True,
+                    'encoding_note': 'URL encoding variation detected' if first_match.get('matched_variation') != param_value else None,
                     'first_source': {
                         'label': first_match['label'],
                         'matches': first_match['matches']
@@ -218,14 +390,14 @@ def analyze_jmeter_correlations(xml_path, url_filter=''):
                     'correlated': False
                 })
 
-        if param_details:
-            results.append({
-                'label': req['label'],
-                'method': req['method'],
-                'url': req['url'],
-                'params': param_details
-            })
+        results.append({
+            'label': req['label'],
+            'method': req['method'],
+            'url': req['url'],
+            'params': param_details
+        })
 
+    current_app.logger.info(f"Final number of requests with parameters: {len(results)}")
     return results
 
 
@@ -344,11 +516,11 @@ def generate_correlated_jmx_with_claude(correlation_results, xml_path):
 def generate_correlated_jmx_with_openai(correlation_results, xml_path):
     """Generate a JMX file with correlated requests using OpenAI."""
     try:
-        # client = openai.OpenAI(api_key=OPENAI_API_KEY)
-        client = OpenAI(
-                      base_url="https://openrouter.ai/api/v1",
-                      api_key="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",
-                    )
+        client = openai.OpenAI(api_key=OPENAI_API_KEY)
+        # client = OpenAI(
+        #               base_url="https://openrouter.ai/api/v1",
+        #               api_key="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",
+        #             )
 
         # Get filtered XML samples and summarize them
         original_samples = get_filtered_samples(xml_path, correlation_results)
@@ -394,14 +566,15 @@ def generate_correlated_jmx_with_openai(correlation_results, xml_path):
 
         # Get response from OpenAI
         response = client.chat.completions.create(
-            model="deepseek/deepseek-r1:free",
+            model=OPENAI_MODEL,
+            # model="deepseek/deepseek-r1:free",
             messages=[
                 {"role": "system", "content": "You are a performance test engineer specializing in JMeter test plans. Return only valid JMX XML content."},
                 {"role": "user", "content": prompt}
             ],
-            # max_completion_tokens=100000,
+            max_completion_tokens=100000,
         )
-
+        print(response.choices[0].message.content)
         jmx_content = extract_jmx_xml(response.choices[0].message.content)
 
         if jmx_content.strip():

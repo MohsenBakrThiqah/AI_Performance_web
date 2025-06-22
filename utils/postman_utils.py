@@ -294,13 +294,17 @@ def convert_postman_to_jmx(postman_file_path):
                     parsed = urlparse(raw_url)
                     if not base_url_value:
                         base_url_value = f"{parsed.scheme}://{parsed.netloc}"
+                    
+                    # Extract path and query string directly from the parsed URL
                     path = parsed.path
+                    
+                    # If there's a query string in the URL, keep it with the path
                     if parsed.query:
-                        path += f"?{parsed.query}"
+                        path = f"{path}?{parsed.query}"
                 except Exception:
                     pass
 
-            # Create HTTP Sampler
+            # Create HTTP Sampler (skip processing query parameters from Postman collection)
             http_sampler = ET.SubElement(thread_hash_tree, "HTTPSamplerProxy",
                                          guiclass="HttpTestSampleGui",
                                          testclass="HTTPSamplerProxy",
@@ -325,6 +329,7 @@ def convert_postman_to_jmx(postman_file_path):
                                       elementType="Arguments")
             args_coll = ET.SubElement(args_prop, "collectionProp", name="Arguments.arguments")
 
+            # Handle request body for non-GET methods
             body_raw = request.get("body", {}).get("raw", "")
             if body_raw:
                 ET.SubElement(http_sampler, "boolProp", name="HTTPSampler.postBodyRaw").text = "true"
@@ -338,6 +343,33 @@ def convert_postman_to_jmx(postman_file_path):
                 ET.SubElement(arg, "boolProp", name="HTTPArgument.use_equals").text = "true"
                 content_type = get_content_type(request.get("header", []))
                 ET.SubElement(arg, "stringProp", name="HTTPArgument.content_type").text = content_type
+            # Handle form data and urlencoded parameters for POST/PUT requests (when no raw body and no query params in URL)
+            elif method in ['POST', 'PUT', 'PATCH'] and not has_query_params:
+                ET.SubElement(http_sampler, "boolProp", name="HTTPSampler.postBodyRaw").text = "false"
+                
+                # Handle form-data
+                if request.get("body", {}).get("mode") == "formdata":
+                    for param in request.get("body", {}).get("formdata", []):
+                        if param.get("disabled", False):
+                            continue
+                        if 'key' in param and 'value' in param:
+                            arg = ET.SubElement(args_coll, "elementProp", name=param['key'], elementType="HTTPArgument")
+                            ET.SubElement(arg, "boolProp", name="HTTPArgument.always_encode").text = "true"
+                            ET.SubElement(arg, "stringProp", name="Argument.name").text = param['key']
+                            ET.SubElement(arg, "stringProp", name="Argument.value").text = param['value']
+                            ET.SubElement(arg, "stringProp", name="Argument.metadata").text = "="
+                
+                # Handle url-encoded form data
+                elif request.get("body", {}).get("mode") == "urlencoded":
+                    for param in request.get("body", {}).get("urlencoded", []):
+                        if param.get("disabled", False):
+                            continue
+                        if 'key' in param and 'value' in param:
+                            arg = ET.SubElement(args_coll, "elementProp", name=param['key'], elementType="HTTPArgument")
+                            ET.SubElement(arg, "boolProp", name="HTTPArgument.always_encode").text = "true"
+                            ET.SubElement(arg, "stringProp", name="Argument.name").text = param['key']
+                            ET.SubElement(arg, "stringProp", name="Argument.value").text = param['value']
+                            ET.SubElement(arg, "stringProp", name="Argument.metadata").text = "="
             else:
                 ET.SubElement(http_sampler, "boolProp", name="HTTPSampler.postBodyRaw").text = "false"
 
