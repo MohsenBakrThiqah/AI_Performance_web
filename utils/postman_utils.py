@@ -204,6 +204,19 @@ def get_request_url(request):
         return f"{host}/{path}" if host else path
 
     return ''
+def convert_postman_variable_format(text):
+    """Convert Postman variables {{var}} to JMeter variables ${var}"""
+    if not text or not isinstance(text, str):
+        return text
+    # Use regex to find all {{variable}} patterns and replace with ${variable}
+    return re.sub(r'\{\{(.*?)\}\}', r'${\1}', text)
+
+def remove_protocol_prefix(url):
+    """Remove http:// or https:// prefix from a URL string"""
+    if not url or not isinstance(url, str):
+        return url
+    return re.sub(r'^https?://', '', url)
+
 def convert_postman_to_jmx(postman_file_path):
     """Convert a Postman collection to JMeter JMX format"""
     try:
@@ -257,21 +270,102 @@ def convert_postman_to_jmx(postman_file_path):
                                   testname="User Defined Variables",
                                   enabled="true")
         vars_coll = ET.SubElement(user_vars, "collectionProp", name="Arguments.arguments")
-
-        # Add common variables
-        for var_name in ["baseUrl", "AccessToken"]:
-            var = ET.SubElement(vars_coll, "elementProp", name=var_name, elementType="Argument")
-            ET.SubElement(var, "stringProp", name="Argument.name").text = var_name
-            ET.SubElement(var, "stringProp", name="Argument.value").text = ""
-            ET.SubElement(var, "stringProp", name="Argument.metadata").text = "="
-        add_hash_tree(thread_hash_tree)
-
-        # Process all requests
+        
+        # Extract and add collection-level variables from Postman
+        collection_variables = postman_data.get('variable', [])
+        
+        # Store collection variables in a dictionary for quick lookup
+        collection_variable_dict = {}
+        for var_data in collection_variables:
+            if 'key' in var_data:
+                collection_variable_dict[var_data['key']] = var_data.get('value', '')
+                
+                var_name = var_data['key']
+                var_value = var_data.get('value', '')
+                
+                # Convert any Postman variable references in the value
+                var_value = convert_postman_variable_format(var_value)
+                
+                # Remove protocol prefix (http:// or https://) from URLs in variables
+                var_value = remove_protocol_prefix(var_value)
+                
+                var = ET.SubElement(vars_coll, "elementProp", name=var_name, elementType="Argument")
+                ET.SubElement(var, "stringProp", name="Argument.name").text = var_name
+                ET.SubElement(var, "stringProp", name="Argument.value").text = var_value
+                ET.SubElement(var, "stringProp", name="Argument.metadata").text = "="
+        
+        # Process all requests to extract and group URLs
         all_requests = []
         walk_items(postman_data.get('item', []), all_requests)
+        
+        # Group similar URLs and create variables for them
+        url_domains = {}
+        domain_variables = {}
+        
+        # First, add BASE_URL if it exists in collection variables
+        if 'BASE_URL' in collection_variable_dict:
+            base_url_value = collection_variable_dict['BASE_URL']
+            domain_key = base_url_value.replace(".", "_").replace("-", "_")
+            domain_variables['BASE_URL'] = 'BASE_URL'
+            url_domains[base_url_value] = 'BASE_URL'
+            
+            # Ensure we have a variable defined for it if not already added
+            var_exists = False
+            for var in vars_coll:
+                if var.tag == "elementProp" and var.attrib.get("name") == "BASE_URL":
+                    var_exists = True
+                    break
+                
+            if not var_exists:
+                var = ET.SubElement(vars_coll, "elementProp", name="BASE_URL", elementType="Argument")
+                ET.SubElement(var, "stringProp", name="Argument.name").text = "BASE_URL"
+                ET.SubElement(var, "stringProp", name="Argument.value").text = base_url_value
+                ET.SubElement(var, "stringProp", name="Argument.metadata").text = "="
+        
+        for req in all_requests:
+            if 'request' not in req:
+                continue
+                
+            request = req['request']
+            url_data = request.get("url", {})
+            raw_url = url_data.get("raw", "") if isinstance(url_data, dict) else url_data
+            
+            # Skip URLs that are just variable references like {{BASE_URL}}
+            if raw_url.strip().startswith("{{") and raw_url.strip().endswith("}}"):
+                continue
+            
+            # Handle URLs with {{BASE_URL}} in them
+            if "{{BASE_URL}}" in raw_url:
+                continue  # Skip these as we've already handled BASE_URL above
+                
+            try:
+                parsed = urlparse(raw_url)
+                if parsed.netloc:
+                    # Skip empty or variable-only domains
+                    if not parsed.netloc or parsed.netloc.startswith("{{") and parsed.netloc.endswith("}}"):
+                        continue
+                        
+                    # Store domain without protocol prefix
+                    domain = parsed.netloc
+                    # Create a clean domain name for the variable
+                    domain_key = parsed.netloc.replace(".", "_").replace("-", "_")
+                    
+                    if domain not in url_domains:
+                        var_name = f"domain_{domain_key}"
+                        url_domains[domain] = domain_key
+                        domain_variables[domain] = var_name
+                        
+                        # Add to user defined variables without protocol prefix
+                        var = ET.SubElement(vars_coll, "elementProp", name=var_name, elementType="Argument")
+                        ET.SubElement(var, "stringProp", name="Argument.name").text = var_name
+                        ET.SubElement(var, "stringProp", name="Argument.value").text = domain
+                        ET.SubElement(var, "stringProp", name="Argument.metadata").text = "="
+            except Exception:
+                pass
+        
+        add_hash_tree(thread_hash_tree)
 
-        base_url_value = ""
-
+        # Reset for actual request processing  
         for req in all_requests:
             if 'request' not in req:
                 continue
@@ -284,27 +378,66 @@ def convert_postman_to_jmx(postman_file_path):
             raw_url = url_data.get("raw", "") if isinstance(url_data, dict) else url_data
 
             # Extract domain and path
-            domain = "${baseUrl}"
+            domain = ""  # Default empty, will be set based on URL
             path = "/"
 
-            if "{{baseUrl}}" in raw_url:
-                path = raw_url.replace("{{baseUrl}}", "")
-            else:
-                try:
-                    parsed = urlparse(raw_url)
-                    if not base_url_value:
-                        base_url_value = f"{parsed.scheme}://{parsed.netloc}"
-                    
-                    # Extract path and query string directly from the parsed URL
-                    path = parsed.path
-                    
-                    # If there's a query string in the URL, keep it with the path
-                    if parsed.query:
-                        path = f"{path}?{parsed.query}"
-                except Exception:
-                    pass
+            # Check if URL has query parameters
+            has_query_params = False
+            if isinstance(url_data, dict) and url_data.get("query") and len(url_data.get("query", [])) > 0:
+                has_query_params = True
+            elif isinstance(url_data, str) and "?" in url_data:
+                has_query_params = True
 
-            # Create HTTP Sampler (skip processing query parameters from Postman collection)
+            # Convert Postman variable format in URL
+            raw_url = convert_postman_variable_format(raw_url)
+            
+            # Handle specific case for {{BASE_URL}}
+            if "{{BASE_URL}}" in raw_url or "${BASE_URL}" in raw_url:
+                # Use BASE_URL variable
+                domain = "${BASE_URL}"
+                
+                # Remove BASE_URL from path
+                if "{{BASE_URL}}" in raw_url:
+                    path = raw_url.replace("https://{{BASE_URL}}", "")
+                    path = path.replace("http://{{BASE_URL}}", "")
+                    path = path.replace("{{BASE_URL}}", "")
+                else:
+                    path = raw_url.replace("https://${BASE_URL}", "")
+                    path = path.replace("http://${BASE_URL}", "")
+                    path = path.replace("${BASE_URL}", "")
+            else:
+                # Handle URLs that reference other variables
+                for var_name in domain_variables.values():
+                    var_pattern = r"\${" + var_name + r"}"
+                    if re.search(var_pattern, raw_url):
+                        domain = "${" + var_name + "}"
+                        path = re.sub(var_pattern, "", raw_url)
+                        break
+                
+                # If domain wasn't set by a variable reference, parse it from the URL
+                if not domain:
+                    try:
+                        parsed = urlparse(raw_url)
+                        if parsed.netloc:
+                            # Check if this domain has a specific variable
+                            if parsed.netloc in domain_variables:
+                                domain = "${" + domain_variables[parsed.netloc] + "}"
+                            else:
+                                # Use the actual domain as a last resort
+                                domain = parsed.netloc
+                            
+                            # Extract path and query string directly from the parsed URL
+                            path = parsed.path
+                            
+                            # If there's a query string in the URL, keep it with the path
+                            if parsed.query:
+                                path = f"{path}?{parsed.query}"
+                                has_query_params = True
+                    except Exception:
+                        # If parsing fails, use the raw URL as path with empty domain
+                        path = raw_url
+                        
+            # Create HTTP Sampler
             http_sampler = ET.SubElement(thread_hash_tree, "HTTPSamplerProxy",
                                          guiclass="HttpTestSampleGui",
                                          testclass="HTTPSamplerProxy",
@@ -333,7 +466,8 @@ def convert_postman_to_jmx(postman_file_path):
             body_raw = request.get("body", {}).get("raw", "")
             if body_raw:
                 ET.SubElement(http_sampler, "boolProp", name="HTTPSampler.postBodyRaw").text = "true"
-                clean_body = html.unescape(body_raw)
+                # Convert any Postman variables in the body
+                clean_body = html.unescape(convert_postman_variable_format(body_raw))
                 arg = ET.SubElement(args_coll, "elementProp", name="", elementType="HTTPArgument")
                 ET.SubElement(arg, "boolProp", name="HTTPArgument.always_encode").text = "false"
                 ET.SubElement(arg, "stringProp", name="Argument.name")
@@ -343,7 +477,7 @@ def convert_postman_to_jmx(postman_file_path):
                 ET.SubElement(arg, "boolProp", name="HTTPArgument.use_equals").text = "true"
                 content_type = get_content_type(request.get("header", []))
                 ET.SubElement(arg, "stringProp", name="HTTPArgument.content_type").text = content_type
-            # Handle form data and urlencoded parameters for POST/PUT requests (when no raw body and no query params in URL)
+            # Handle form data and urlencoded parameters for POST/PUT requests
             elif method in ['POST', 'PUT', 'PATCH'] and not has_query_params:
                 ET.SubElement(http_sampler, "boolProp", name="HTTPSampler.postBodyRaw").text = "false"
                 
@@ -356,7 +490,8 @@ def convert_postman_to_jmx(postman_file_path):
                             arg = ET.SubElement(args_coll, "elementProp", name=param['key'], elementType="HTTPArgument")
                             ET.SubElement(arg, "boolProp", name="HTTPArgument.always_encode").text = "true"
                             ET.SubElement(arg, "stringProp", name="Argument.name").text = param['key']
-                            ET.SubElement(arg, "stringProp", name="Argument.value").text = param['value']
+                            # Convert Postman variables in parameter values
+                            ET.SubElement(arg, "stringProp", name="Argument.value").text = convert_postman_variable_format(param['value'])
                             ET.SubElement(arg, "stringProp", name="Argument.metadata").text = "="
                 
                 # Handle url-encoded form data
@@ -368,7 +503,8 @@ def convert_postman_to_jmx(postman_file_path):
                             arg = ET.SubElement(args_coll, "elementProp", name=param['key'], elementType="HTTPArgument")
                             ET.SubElement(arg, "boolProp", name="HTTPArgument.always_encode").text = "true"
                             ET.SubElement(arg, "stringProp", name="Argument.name").text = param['key']
-                            ET.SubElement(arg, "stringProp", name="Argument.value").text = param['value']
+                            # Convert Postman variables in parameter values
+                            ET.SubElement(arg, "stringProp", name="Argument.value").text = convert_postman_variable_format(param['value'])
                             ET.SubElement(arg, "stringProp", name="Argument.metadata").text = "="
             else:
                 ET.SubElement(http_sampler, "boolProp", name="HTTPSampler.postBodyRaw").text = "false"
@@ -396,18 +532,13 @@ def convert_postman_to_jmx(postman_file_path):
 
                 header = ET.SubElement(header_props, "elementProp", name="", elementType="Header")
                 ET.SubElement(header, "stringProp", name="Header.name").text = h.get("key", "")
-                ET.SubElement(header, "stringProp", name="Header.value").text = h.get("value", "")
-
+                # Convert Postman variables in header values
+                ET.SubElement(header, "stringProp", name="Header.value").text = convert_postman_variable_format(h.get("value", ""))
+            
             add_hash_tree(sampler_tree)
 
-        # Set baseUrl in variables if we found one
-        if base_url_value:
-            for var in vars_coll:
-                if var.tag == "elementProp" and var.attrib.get("name") == "baseUrl":
-                    for prop in var:
-                        if prop.attrib.get("name") == "Argument.value":
-                            prop.text = base_url_value
-
+        # No need to set default baseUrl value anymore
+        
         # Add listeners
         vrt = ET.SubElement(thread_hash_tree, "ResultCollector",
                             guiclass="ViewResultsFullVisualizer",

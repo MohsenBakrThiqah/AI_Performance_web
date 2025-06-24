@@ -107,12 +107,8 @@ def extract_params(text):
     pairs = re.findall(r'([\w\.-]+)=([^&]*)', text)
     if pairs:
         for key, value in pairs:
-            # URL-decode the value
-            try:
-                decoded_value = urllib.parse.unquote(value)
-                params[key] = decoded_value
-            except:
-                params[key] = value
+            # Store the original value without decoding
+            params[key] = value
         return params
 
     # Then try to parse as JSON
@@ -335,44 +331,104 @@ def analyze_jmeter_correlations(xml_path, url_filter=''):
             if not param_value:
                 continue
 
-            # Generate variations of the parameter value with different encodings
-            param_variations = get_encoding_variations(param_value)
+            # Store the original value before any decoding
+            original_param_value = param_value
             
-            # Find all previous responses that contain this parameter value or its variations
-            matching_responses = []
+            # Prepare variations for searching
+            decoded_param_value = None
+            encoded_param_value = None
+            
+            try:
+                # Check if it's URL-encoded
+                decoded_param_value = urllib.parse.unquote(param_value)
+                if decoded_param_value == param_value:
+                    decoded_param_value = None  # Not actually encoded
+                
+                # Also prepare encoded version
+                encoded_param_value = urllib.parse.quote(param_value)
+                if encoded_param_value == param_value:
+                    encoded_param_value = None  # Already encoded or doesn't need encoding
+            except Exception as e:
+                current_app.logger.debug(f"Error determining encoding for {param_value}: {str(e)}")
+
+            # First search with original value
+            original_matches = []
+            encoded_matches = []
+            decoded_matches = []
+            correlation_type = None
+
+            # Check if we can find the original value in previous responses
             for resp_idx, resp in enumerate(responses[:idx]):
                 if not resp['full_response']:
                     continue
-                    
-                matched = False
-                best_match = None
                 
-                # Try each variation of the parameter value
-                for variation in param_variations:
-                    if variation in resp['full_response']:
-                        matches = extract_dynamic_patterns(resp['full_response'], variation)
+                if original_param_value in resp['full_response']:
+                    matches = extract_dynamic_patterns(resp['full_response'], original_param_value)
+                    if matches:
+                        original_matches.append({
+                            'index': resp_idx,
+                            'label': requests[resp_idx]['label'],
+                            'matches': matches[:3],  # Limit to first 3 matches
+                            'matched_variation': original_param_value,
+                            'correlation_type': 'original'
+                        })
+            
+            # If original value not found, try decoded value
+            if not original_matches and decoded_param_value:
+                for resp_idx, resp in enumerate(responses[:idx]):
+                    if not resp['full_response']:
+                        continue
+                    
+                    if decoded_param_value in resp['full_response']:
+                        matches = extract_dynamic_patterns(resp['full_response'], decoded_param_value)
                         if matches:
-                            matched = True
-                            best_match = {
+                            decoded_matches.append({
                                 'index': resp_idx,
                                 'label': requests[resp_idx]['label'],
-                                'matches': matches[:3],  # Limit to first 3 matches
-                                'matched_variation': variation
-                            }
-                            break
-                
-                if matched and best_match:
-                    matching_responses.append(best_match)
+                                'matches': matches[:3],
+                                'matched_variation': decoded_param_value,
+                                'correlation_type': 'decoded'
+                            })
+            
+            # If still no matches, try encoded value
+            if not original_matches and not decoded_matches and encoded_param_value:
+                for resp_idx, resp in enumerate(responses[:idx]):
+                    if not resp['full_response']:
+                        continue
+                    
+                    if encoded_param_value in resp['full_response']:
+                        matches = extract_dynamic_patterns(resp['full_response'], encoded_param_value)
+                        if matches:
+                            encoded_matches.append({
+                                'index': resp_idx,
+                                'label': requests[resp_idx]['label'],
+                                'matches': matches[:3],
+                                'matched_variation': encoded_param_value,
+                                'correlation_type': 'encoded'
+                            })
+            
+            # Determine which matches to use based on priority
+            matching_responses = []
+            
+            if original_matches:
+                matching_responses = original_matches
+            elif decoded_matches:
+                matching_responses = decoded_matches
+            elif encoded_matches:
+                matching_responses = encoded_matches
 
             if matching_responses:
                 first_match = matching_responses[0]
                 last_match = matching_responses[-1]
+                correlation_type = first_match['correlation_type']
 
                 param_details.append({
                     'param': param_name,
-                    'value': param_value,
+                    'value': original_param_value,  # Always store original value
                     'correlated': True,
-                    'encoding_note': 'URL encoding variation detected' if first_match.get('matched_variation') != param_value else None,
+                    'correlation_type': correlation_type,
+                    'encoded_value': encoded_param_value if correlation_type == 'decoded' or correlation_type == 'original' else None,
+                    'decoded_value': decoded_param_value if correlation_type == 'encoded' or correlation_type == 'original' else None,
                     'first_source': {
                         'label': first_match['label'],
                         'matches': first_match['matches']
@@ -386,7 +442,7 @@ def analyze_jmeter_correlations(xml_path, url_filter=''):
             else:
                 param_details.append({
                     'param': param_name,
-                    'value': param_value,
+                    'value': original_param_value,
                     'correlated': False
                 })
 

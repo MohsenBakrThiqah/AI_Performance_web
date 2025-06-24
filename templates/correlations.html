@@ -132,12 +132,40 @@
                                                         <div class="mt-2">
                                                             <div><small class="text-muted">Value:</small> {{ param.value|truncate(50) }}</div>
                                                             {% if param.correlated %}
+                                                                {% if param.correlation_type %}
                                                                 <div class="mt-1">
-                                                                    <small class="text-muted">First found in:</small> {{ param.first_source }}
+                                                                    <small class="text-muted">Correlation Type:</small> 
+                                                                    <span class="badge bg-info text-dark">{{ param.correlation_type|title }}</span>
+                                                                </div>
+                                                                {% endif %}
+                                                                
+                                                                {% if param.encoded_value %}
+                                                                <div class="mt-1">
+                                                                    <small class="text-muted">Encoded Value:</small> 
+                                                                    <code>{{ param.encoded_value|truncate(30) }}</code>
+                                                                </div>
+                                                                {% endif %}
+                                                                
+                                                                {% if param.decoded_value %}
+                                                                <div class="mt-1">
+                                                                    <small class="text-muted">Decoded Value:</small> 
+                                                                    <code>{{ param.decoded_value|truncate(30) }}</code>
+                                                                </div>
+                                                                {% endif %}
+                                                                
+                                                                <div class="mt-1">
+                                                                    <small class="text-muted">First found in:</small> {{ param.first_source.label }}
                                                                 </div>
                                                                 <div>
-                                                                    <small class="text-muted">Nearest found in:</small> {{ param.nearest_source }}
+                                                                    <small class="text-muted">Nearest found in:</small> {{ param.nearest_source.label }}
                                                                 </div>
+                                                                
+                                                                {% if param.first_source.matches and param.first_source.matches|length > 0 %}
+                                                                <div class="mt-1">
+                                                                    <small class="text-muted">Regex Pattern:</small>
+                                                                    <code>{{ param.first_source.matches[0] }}</code>
+                                                                </div>
+                                                                {% endif %}
                                                             {% endif %}
                                                         </div>
                                                     </div>
