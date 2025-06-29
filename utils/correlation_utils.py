@@ -427,8 +427,8 @@ def analyze_jmeter_correlations(xml_path, url_filter=''):
                     'value': original_param_value,  # Always store original value
                     'correlated': True,
                     'correlation_type': correlation_type,
-                    'encoded_value': encoded_param_value if correlation_type == 'decoded' or correlation_type == 'original' else None,
-                    'decoded_value': decoded_param_value if correlation_type == 'encoded' or correlation_type == 'original' else None,
+                    'encoded_value': encoded_param_value if correlation_type == 'encoded' or correlation_type == 'original' else None,
+                    'decoded_value': decoded_param_value if correlation_type == 'decoded' or correlation_type == 'original' else None,
                     'first_source': {
                         'label': first_match['label'],
                         'matches': first_match['matches']
