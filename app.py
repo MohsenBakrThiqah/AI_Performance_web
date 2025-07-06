@@ -50,7 +50,9 @@ def create_app(config_class=Config):
                     'release_report': request.form.get('release_report'),
                     'scope': request.form.get('scope'),
                     'findings_text': request.form.get('findings_text'),
-                    'use_gpt': request.form.get('use_gpt') == 'on'
+                    'use_gpt': request.form.get('use_gpt') == 'on',
+                    'use_kibana_analysis': request.form.get('use_kibana_analysis') == 'on',
+                    'APM_service_name': request.form.get('APM_service_name')
                 }
 
                 if 'report_folder' not in request.files:

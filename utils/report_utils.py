@@ -11,7 +11,10 @@ from urllib.parse import urlparse
 # import html
 import anthropic
 import openai
-
+import requests
+from urllib.parse import unquote
+from datetime import datetime, timedelta
+from bs4 import BeautifulSoup
 from config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL, OPENAI_API_KEY, OPENAI_MODEL
 
 # Configure logging
@@ -243,7 +246,9 @@ def edit_html_and_js(html_path, js_path, stats_path, form_data):
             modified_html
         )
         
-        modified_html = modified_html.replace("</body>", "<img src=\"https://i.ibb.co/8L9RQ6pB/Thanks.png\" alt=\"Cover Image\" style=\"width: 100%; height: 100vh; object-fit: cover; break-after: page; display: none;\" onload=\"this.style.display='none'; window.matchMedia('print').addListener(mql => mql.matches &amp;&amp; (this.style.display='block')); window.onafterprint = () => this.style.display='none';\"></body>")
+        # IMPORTANT: Remove the first insertion of the Thanks.png image
+        # modified_html = modified_html.replace("</body>", "<img src=\"https://i.ibb.co/8L9RQ6pB/Thanks.png\" alt=\"Cover Image\" style=\"width: 100%; height: 100vh; object-fit: cover; break-after: page; display: none;\" onload=\"this.style.display='none'; window.matchMedia('print').addListener(mql => mql.matches &amp;&amp; (this.style.display='block')); window.onafterprint = () => this.style.display='none';\"></body>")
+        
         # GPT analysis if enabled
         if form_data.get('use_gpt', False):
             # gpt_response = ask_claude(statistics_content, form_data)
@@ -259,6 +264,96 @@ def edit_html_and_js(html_path, js_path, stats_path, form_data):
                 f'<script src="sbadmin2-1.0.7/bower_components/jquery/dist/jquery.min.js"></script>\n<br><br><p class="dashboard-title">OpenAI GPT 4.1 -  Statistics Analysis</p>{gpt_response}'
             )
 
+        # Add enhanced Kibana analysis processing with debugging
+        try:
+            # Log all form data to diagnose what's happening
+            logging.info(f"Form data keys: {form_data.keys()}")
+            logging.info(f"use_kibana_analysis value: {form_data.get('use_kibana_analysis')}")
+            logging.info(f"APM service name: {form_data.get('APM_service_name')}")
+            
+            # IMPORTANT: Only check the value of use_kibana_analysis, not if the key exists
+            use_kibana = form_data.get('use_kibana_analysis', False)
+            
+            # Convert to boolean if it's a string
+            if isinstance(use_kibana, str):
+                use_kibana = use_kibana.lower() in ('true', 'yes', 'y', 'on', '1')
+            
+            logging.info(f"Final Kibana analysis decision: {use_kibana}")
+            
+            if use_kibana:
+                apm_service_name = form_data.get('APM_service_name', '')
+                logging.info(f"Kibana analysis requested for service: {apm_service_name}")
+                
+                # Check if APM service name is valid
+                if not apm_service_name.strip():
+                    logging.error("APM service name is empty")
+                    kibana_error_message = "No Data found on Kibana APM - Service name is missing"
+                    
+                    # Add error message to the report
+                    body_pos = modified_html.find("</body>")
+                    if body_pos != -1:
+                        before_body = modified_html[:body_pos]
+                        after_body = modified_html[body_pos:]
+                        error_section = f'<br><br><p class="dashboard-title">OpenAI GPT 4.1 - Kibana APM Resource Utilization Analysis</p><p style="color:red">{kibana_error_message}</p>'
+                        modified_html = before_body + error_section + after_body
+                else:
+                    # Call the analysis function with explicit exception handling
+                    try:
+                        logging.info("Calling ask_gpt_for_CPU_Memory function...")
+                        KibanaAPMAnalysis = ask_gpt_for_CPU_Memory(form_data, html_path)
+                        
+                        if KibanaAPMAnalysis:
+                            logging.info("Successfully received Kibana analysis")
+                            kibana_analysis_html = KibanaAPMAnalysis.replace('\n', '<br>').replace('#', '').replace('*', '')
+                            
+                            # Find the body tag and insert before it
+                            body_pos = modified_html.find("</body>")
+                            if body_pos != -1:
+                                # Remove any existing Thanks.png image if it's present
+                                closing_img = '<img src=\"https://i.ibb.co/8L9RQ6pB/Thanks.png\"'
+                                if closing_img in modified_html:
+                                    img_pos = modified_html.find(closing_img)
+                                    if img_pos != -1 and img_pos < body_pos:
+                                        modified_html = modified_html[:img_pos] + modified_html[body_pos:]
+                                        body_pos = modified_html.find("</body>")
+                                
+                                before_body = modified_html[:body_pos]
+                                after_body = modified_html[body_pos:]
+                                
+                                # Construct the new content
+                                kibana_section = f'<br><br><p class="dashboard-title">OpenAI GPT 4.1 - Kibana APM Resource Utilization Analysis</p>{kibana_analysis_html}'
+                                
+                                # Rebuild the HTML with the Kibana section
+                                modified_html = before_body + kibana_section + after_body
+                                logging.info("Successfully inserted Kibana analysis section")
+                            else:
+                                logging.error("Could not find </body> tag in HTML")
+                        else:
+                            logging.warning("No Kibana analysis data received")
+                    except Exception as e:
+                        logging.error(f"Error during Kibana analysis: {str(e)}")
+                        kibana_error_message = f"Failed to generate Kibana analysis: {str(e)}"
+                        
+                        # Add error message to the report
+                        body_pos = modified_html.find("</body>")
+                        if body_pos != -1:
+                            before_body = modified_html[:body_pos]
+                            after_body = modified_html[body_pos:]
+                            error_section = f'<br><br><p class="dashboard-title">OpenAI GPT 4.1 - Kibana APM Resource Utilization Analysis</p><p style="color:red">{kibana_error_message}</p>'
+                            modified_html = before_body + error_section + after_body
+            else:
+                logging.info("Kibana analysis not requested - checkbox is not checked")
+                
+        except Exception as e:
+            logging.error(f"Error in Kibana analysis processing: {str(e)}")
+        
+        # Make sure closing image is always added ONCE, at the very end of the process
+        if "</body>" in modified_html:
+            modified_html = modified_html.replace(
+                "</body>",
+                "<img src=\"https://i.ibb.co/8L9RQ6pB/Thanks.png\" alt=\"Cover Image\" style=\"width: 100%; height: 100vh; object-fit: cover; break-after: page; display: none;\" onload=\"this.style.display='none'; window.matchMedia('print').addListener(mql => mql.matches &amp;&amp; (this.style.display='block')); window.onafterprint = () => this.style.display='none';\"></body>"
+            )
+        
         # Save modified HTML
         with open(html_path, 'w', encoding='utf-8') as html_file:
             html_file.write(modified_html)
@@ -631,3 +726,268 @@ def pass_fail_colors(js_file_path, css_file_path, api_threshold, err_rate_thresh
     except Exception as e:
         logging.error(f"Error adding pass/fail colors: {str(e)}")
         raise
+#Extract Resources Utilzation from Kibana and analyze it with GPT
+def convert_to_iso_format(date_str):
+    """Convert '5/11/25, 2:22 PM' format to '2025-05-11T14:22:00.000Z' after subtracting 3 hours"""
+    try:
+        # Parse the input string (assuming format like '5/11/25, 2:22 PM')
+        dt = datetime.strptime(date_str, '%m/%d/%y, %I:%M %p')
+
+        # Subtract 3 hours from the parsed datetime
+        dt = dt - timedelta(hours=3)
+
+        # Format to ISO and add milliseconds and Zulu timezone
+        return dt.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+    except ValueError as e:
+        raise ValueError(f"Invalid date format. Expected 'MM/DD/YY, HH:MM AM/PM'. Error: {e}")
+def fetch_kibana_metrics_with_login(username, password, service_name, range_from, range_to):
+    """
+    Fetches Kibana metrics for a specific service after authenticating
+
+    Args:
+        username (str): Kibana login username
+        password (str): Kibana login password
+        service_name (str): The service name to fetch metrics for (e.g., 'Faseh-API')
+        range_from (str): Start time in format '5/11/25, 2:22 PM' (will be converted to 3 hours earlier)
+        range_to (str): End time in format '5/11/25, 2:22 PM' (will be converted to 3 hours earlier)
+    """
+    # Convert time formats (subtracting 3 hours)
+    try:
+        print(f"Original range_from: {range_from}")
+        iso_range_from = convert_to_iso_format(range_from)
+        print(f"Adjusted ISO range_from: {iso_range_from}")
+
+        print(f"Original range_to: {range_to}")
+        iso_range_to = convert_to_iso_format(range_to)
+        print(f"Adjusted ISO range_to: {iso_range_to}")
+    except ValueError as e:
+        print(f"Date conversion error: {e}")
+        return None
+
+    # Create a session to maintain cookies between requests
+    session = requests.Session()
+
+    # Initial cookies (before login)
+    initial_cookies = {
+        "_ga": "GA1.1.521425637.1740653592",
+        "_ga_0J728DHV7T": "GS1.1.1741257251.3.1.1741257834.0.0.0"
+    }
+
+    # Common headers
+    common_headers = {
+        "Accept": "*/*",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Connection": "keep-alive",
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 Edg/137.0.0.0",
+        "kbn-build-number": "80930",
+        "kbn-version": "8.17.4",
+        "sec-ch-ua": '"Microsoft Edge";v="137", "Chromium";v="137", "Not/A)Brand";v="24"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"Windows"',
+        "x-elastic-internal-origin": "Kibana"
+    }
+
+    # 1. First make the login request
+    login_url = "https://kibana-pp.thiqah.sa:5601/internal/security/login"
+
+    login_headers = common_headers.copy()
+    login_headers.update({
+        "Origin": "https://kibana-pp.thiqah.sa:5601",
+        "Referer": "https://kibana-pp.thiqah.sa:5601/login?msg=LOGGED_OUT",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
+        "x-kbn-context": unquote(
+            "%7B%22type%22%3A%22application%22%2C%22name%22%3A%22security_login%22%2C%22url%22%3A%22%2Flogin%22%7D")
+    })
+
+    login_payload = {
+        "providerType": "basic",
+        "providerName": "basic1",
+        "currentURL": "https://kibana-pp.thiqah.sa:5601/login?msg=LOGGED_OUT",
+        "params": {
+            "username": username,
+            "password": password
+        }
+    }
+
+    try:
+        # Perform login
+        login_response = session.post(
+            login_url,
+            headers=login_headers,
+            cookies=initial_cookies,
+            json=login_payload,
+            verify=False  # Disabling SSL verification - use with caution!
+        )
+
+        login_response.raise_for_status()
+
+        # 2. Now make the metrics request with the authenticated session
+        metrics_url = f"https://kibana-pp.thiqah.sa:5601/internal/apm/services/{service_name}/metrics/charts"
+
+        metrics_params = {
+            "environment": "ENVIRONMENT_ALL",
+            "kuery": "",
+            "start": iso_range_from,
+            "end": iso_range_to,
+            "agentName": "dotnet"
+        }
+
+        metrics_headers = common_headers.copy()
+        metrics_headers.update({
+            "Referer": f"https://kibana-pp.thiqah.sa:5601/app/apm/services/{service_name}/metrics?comparisonEnabled=true&environment=ENVIRONMENT_ALL&kuery=&latencyAggregationType=avg&offset=1d&rangeFrom={iso_range_from}&rangeTo={iso_range_to}&serviceGroup=&transactionType=request",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-origin",
+            "x-kbn-context": unquote(
+                "%7B%22type%22%3A%22application%22%2C%22name%22%3A%22apm%22%2C%22url%22%3A%22%2Fapp%2Fapm%2Fservices%2F") +
+                             service_name +
+                             unquote("%2Fmetrics%22%2C%22page%22%3A%22%2Fservices%2F%3AserviceName%2Fmetrics%22%7D")
+        })
+
+        metrics_response = session.get(
+            metrics_url,
+            params=metrics_params,
+            headers=metrics_headers,
+            verify=False  # Disabling SSL verification - use with caution!
+        )
+
+        metrics_response.raise_for_status()
+        print("Metrics response:")
+        print(metrics_response.json())
+        return metrics_response.json()  # Return the parsed JSON response
+
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
+        return None
+    finally:
+        session.close()
+
+
+
+def extract_datetime_from_html(html_file_path, Time):
+    """
+    Extracts the datetime string from an HTML file with the given structure.
+    
+    Args:
+        html_file_path (str): Path to the HTML file
+        Time (str): The text to look for (e.g., "Start Time" or "End Time")
+        
+    Returns:
+        str: The extracted datetime string (e.g., "5/11/25, 2:22 PM")
+        or None if not found
+    """
+    try:
+        logging.info(f"Extracting {Time} from {html_file_path}")
+        
+        with open(html_file_path, 'r', encoding='utf-8') as file:
+            html_content = file.read()
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # Find the table row containing the time label
+            start_time_row = soup.find('td', string=Time)
+            
+            if start_time_row and start_time_row.parent:
+                # Get the next td which contains our datetime
+                datetime_td = start_time_row.parent.find_all('td')[1]
+                if datetime_td:
+                    # Extract text and remove surrounding quotes if present
+                    datetime_str = datetime_td.get_text(strip=True).strip('"')
+                    logging.info(f"Found {Time}: {datetime_str}")
+                    return datetime_str
+            
+            # If not found, try to find the start/end time in another way
+            # The default JMeter report has a table with Start/End times
+            all_tds = soup.find_all('td')
+            for td in all_tds:
+                if td.get_text().strip() == Time:
+                    next_td = td.find_next('td')
+                    if next_td:
+                        datetime_str = next_td.get_text().strip().strip('"')
+                        logging.info(f"Found {Time} (alternative method): {datetime_str}")
+                        return datetime_str
+            
+            logging.warning(f"Could not find {Time} in HTML file")
+            # If we can't find the time, return a default time (current time)
+            now = datetime.now()
+            return now.strftime("%m/%d/%y, %I:%M %p")
+        
+    except Exception as e:
+        logging.error(f"Error extracting datetime: {str(e)}")
+        # Return current time as fallback
+        now = datetime.now()
+        return now.strftime("%m/%d/%y, %I:%M %p")
+
+
+def ask_gpt_for_CPU_Memory(form_data, html_file_path):
+    try:
+        logging.info(f"Starting Kibana APM analysis for service: {form_data.get('APM_service_name', 'N/A')}")
+        
+        # Extract start and end times from the HTML file
+        start_time = extract_datetime_from_html(html_file_path, "Start Time")
+        end_time = extract_datetime_from_html(html_file_path, "End Time")
+        
+        logging.info(f"Extracted times - Start: {start_time}, End: {end_time}")
+        
+        if not start_time or not end_time:
+            logging.error("Failed to extract start or end time from HTML file")
+            return "No Data found on Kibana APM for provided service name & test duration - Could not extract test time period."
+        
+        # Fetch metrics from Kibana
+        kibana_response = fetch_kibana_metrics_with_login(
+            username="mmbakr",
+            password="Iamlegand11@",
+            service_name=form_data['APM_service_name'],
+            range_from=start_time,
+            range_to=end_time
+        )
+        
+        if not kibana_response:
+            logging.error("Failed to get response from Kibana API")
+            return "No Data found on Kibana APM for provided service name & test duration - Failed to connect to Kibana."
+        
+        logging.info("Successfully received Kibana metrics, sending to GPT for analysis")
+        
+        # Send to GPT for analysis
+        client = openai.OpenAI(api_key=OPENAI_API_KEY)
+        response = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            max_completion_tokens=100000,
+            messages=[
+                {"role": "system",
+                "content": "You are a data extraction and analysis specialist for performance metrics"},
+                {"role": "user",
+                "content": "Given the following JSON response, extract only the statistics for:\n\n"
+                            "- \"CPU Usage (System max)\"\n"
+                            "- \"CPU Usage (Process max)\"\n"
+                            "- \"System Memory Usage (Max)\"\n\n"
+                            "For each, return:\n"
+                            "1. Min value in percentage and the exact UTC time it occurred\n"
+                            "2. Max value in percentage and the exact UTC time it occurred\n"
+                            "3. Average value in percentage\n"
+                            "4. A short analysis of whether the utilization is considered good, moderate, or high, based on the average and max values.\n\n"
+                            "Format the output exactly like this:\n\n"
+                            "CPU Usage (System max)\n"
+                            "Min: [min]% at [min time]\n"
+                            "Max: [max]% at [max time]\n"
+                            "Average: [average]%\n"
+                            "Analysis: [your interpretation of the CPU usage]\n\n"
+                            "System Memory Usage (Max)\n"
+                            "Min: [min]% at [min time]\n"
+                            "Max: [max]% at [max time]\n"
+                            "Average: [average]%\n"
+                            "Analysis: [your interpretation of the memory usage]\n\n"
+                            "(If JSON input doesn't have graphs data, respond with: \"No Data found on Kibana APM for provided service name & test duration\")\n\n"
+                            f"Here's the JSON: {kibana_response}"
+                }
+            ]
+        )
+
+        content = response.choices[0].message.content
+        logging.info(f"GPT analysis received: {content[:100]}...")
+        return content
+    except Exception as e:
+        logging.error(f"Error in ask_gpt_for_CPU_Memory: {str(e)}")
+        return f"No Data found on Kibana APM - Error occurred: {str(e)}"

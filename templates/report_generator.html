@@ -14,7 +14,7 @@
                     <div class="card mb-3 fade-in" style="--delay: 0.4s">
                         <div class="card-header">
                             <div class="d-flex justify-content-between align-items-center">
-                                <span>Workload Model</span>
+                                <span>Project & Workload Model</span>
                             </div>
                         </div>
                         <div id="workloadModel">
@@ -58,6 +58,11 @@
                                 <div class="mb-3">
                                     <label for="url" class="form-label">URL Under Test <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="url" name="url" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="APM_service_name" class="form-label">Elastic APM Service Name <span id="apm_required" class="text-danger d-none">*</span></label>
+                                    <input type="text" class="form-control" id="APM_service_name" name="APM_service_name"  required>
+                                    <small class="form-text text-muted">Must exactly matches Product service name on Kibana APM</small>
                                 </div>
                             </div>
                         </div>
@@ -209,6 +214,11 @@ Examples:
                 <label class="form-check-label" for="use_gpt">Analyze results with OpenAI</label>
             </div>
 
+            <div class="mb-3 form-check fade-in" style="--delay: 1.65s">
+                <input type="checkbox" class="form-check-input" id="use_kibana_analysis" name="use_kibana_analysis">
+                <label class="form-check-label" for="use_kibana_analysis">Analyze Kibana CPU & Memory Metrics With OpenAI</label>
+            </div>
+
             <div id="validationMessage" class="alert alert-danger d-none fade-in" style="--delay: 1.7s">
                 Please fill in all mandatory fields marked with <span class="text-danger">*</span>
             </div>
@@ -283,6 +293,20 @@ Examples:
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.querySelector('form');
+        const kibanaAnalysisCheckbox = document.getElementById('use_kibana_analysis');
+        const apmServiceNameField = document.getElementById('APM_service_name');
+        const apmRequiredLabel = document.getElementById('apm_required');
+        
+        // Handle the conditional required state for APM service name
+        kibanaAnalysisCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                apmServiceNameField.setAttribute('required', '');
+                apmRequiredLabel.classList.remove('d-none');
+            } else {
+                apmServiceNameField.removeAttribute('required');
+                apmRequiredLabel.classList.add('d-none');
+            }
+        });
         
         form.addEventListener('submit', function(e) {
             e.preventDefault();
