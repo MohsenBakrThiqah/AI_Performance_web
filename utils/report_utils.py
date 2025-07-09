@@ -961,8 +961,11 @@ def ask_gpt_for_CPU_Memory(form_data, html_file_path):
                 {"role": "user",
                 "content": "Given the following JSON response, extract only the statistics for:\n\n"
                             "- \"CPU Usage (System max)\"\n"
+                            "- \"CPU Usage (System average)\"\n"
                             "- \"CPU Usage (Process max)\"\n"
+                            "- \"CPU Usage (Process average)\"\n"
                             "- \"System Memory Usage (Max)\"\n\n"
+                            "- \"System Memory Usage (Average)\"\n\n"
                             "For each, return:\n"
                             "1. Min value in percentage and the exact UTC time it occurred\n"
                             "2. Max value in percentage and the exact UTC time it occurred\n"

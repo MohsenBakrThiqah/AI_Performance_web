@@ -537,11 +537,12 @@ def generate_correlated_jmx_with_claude(correlation_results, xml_path):
             "3. Updates the correlated parameters to use variables\n"
             "Please return only the JMeter JMX XML content."
         )
+        print(prompt)
 
         # Stream response from Claude
         with client.messages.stream(
             model=ANTHROPIC_MODEL,
-            max_tokens=32000,  # Reduced max tokens
+            max_tokens=100000,  # Reduced max tokens
             temperature=0.3,
             system="You are a senior QA automation engineer specializing in JMeter test plans.",
             messages=[{"role": "user", "content": prompt}]
