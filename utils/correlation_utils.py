@@ -534,7 +534,11 @@ def generate_correlated_jmx_with_claude(correlation_results, xml_path):
             "Create a JMX file that:\n"
             "1. Creates HTTP requests based on the summarized samples\n"
             "2. Adds Regular Expression Extractors for the correlations\n"
-            "3. Updates the correlated parameters to use variables\n"
+            "3. Use regular expressions in Correlation Requirements as a reference (feel free to enhance them)\n"
+            "4. Updates the correlated parameters to use variables\n"
+            "5. Use User Defined Variables in jmeter to have most used variables in one location\n"
+            "6. Use http request headers on whole thread group level and set common headers used in the requests\n"
+
             "Please return only the JMeter JMX XML content."
         )
         print(prompt)
