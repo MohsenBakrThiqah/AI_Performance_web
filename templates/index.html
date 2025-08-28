@@ -7,10 +7,10 @@
     <!-- Hero Section -->
     <div class="row align-items-center mb-5 fade-in" style="--delay: 0.2s">
         <div class="col-md-6">
-            <h1 class="display-4 fw-bold mb-3">THIQAH AI Performance Assistant</h1>
-            <p class="lead mb-4">
+            <h1 class="display-4 fw-bold mb-3">THIQAH AI Performance Assistant</h1>            <p class="lead mb-4">
                 Streamline your performance testing workflow with AI-powered analysis,
                 automated reporting, Automate JMX Files Generation, and intelligent correlation detection.
+                <br><strong>💬 New: Chat with our AI Assistant for instant help!</strong>
             </p>
             <div class="d-flex gap-3">
                 <a href="{{ url_for('features') }}" class="btn btn-outline-primary btn-lg">
@@ -26,9 +26,8 @@
 
     <!-- Features Section -->
     <section id="features" class="py-5">
-        <h2 class="text-center mb-5 fade-in" style="--delay: 0.4s">Key Features</h2>
-        <div class="row g-4">
-            <div class="col-md-4 fade-in" style="--delay: 0.6s">
+        <h2 class="text-center mb-5 fade-in" style="--delay: 0.4s">Key Features</h2>        <div class="row g-4">
+            <div class="col-md-3 fade-in" style="--delay: 0.6s">
                 <div class="card h-100 border-0 shadow-sm">
                     <div class="card-body text-center p-4">
                         <div class="feature-icon bg-primary bg-gradient rounded-circle p-3 mb-3 mx-auto">
@@ -46,7 +45,7 @@
                 </div>
             </div>
 
-            <div class="col-md-4 fade-in" style="--delay: 0.8s">
+            <div class="col-md-3 fade-in" style="--delay: 0.8s">
                 <div class="card h-100 border-0 shadow-sm">
                     <div class="card-body text-center p-4">
                         <div class="feature-icon bg-success bg-gradient rounded-circle p-3 mb-3 mx-auto">
@@ -64,7 +63,7 @@
                 </div>
             </div>
 
-            <div class="col-md-4 fade-in" style="--delay: 1s">
+            <div class="col-md-3 fade-in" style="--delay: 1s">
                 <div class="card h-100 border-0 shadow-sm">
                     <div class="card-body text-center p-4">
                         <div class="feature-icon bg-info bg-gradient rounded-circle p-3 mb-3 mx-auto">
@@ -77,15 +76,29 @@
                         </p>
                         <a href="{{ url_for('postman_tools') }}" class="btn btn-sm btn-outline-info">
                             Convert Collections
-                        </a>
+                        </a>                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 fade-in" style="--delay: 1.2s">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon bg-warning bg-gradient rounded-circle p-3 mb-3 mx-auto">
+                            <i class="bi bi-chat-dots text-white fs-2"></i>
+                        </div>
+                        <h3 class="h4">AI Chat Assistant</h3>
+                        <p class="text-muted">
+                            Get instant help with performance historical reports, THIQAH KPIs analysis,
+                            and Projects Overview through our AI-powered chat assistant.
+                        </p>                        <button class="btn btn-sm btn-outline-warning" onclick="openChat()">
+                            Start Chat
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
-    </section>
-
-    <!-- Getting Started Section -->
-    <section class="py-5 bg-dark text-white rounded-3 fade-in" style="--delay: 1.2s">
+    </section>    <!-- Getting Started Section -->
+    <section class="py-5 bg-dark text-white rounded-3 fade-in" style="--delay: 1.4s">
         <div class="container">
             <div class="row align-items-center">
                 <div class="col-md-8">
@@ -139,12 +152,24 @@
             opacity: 1;
             transform: translateY(0);
         }
-    }
-
-    .fade-in {
+    }    .fade-in {
         opacity: 0;
         animation: fadeIn 0.6s ease-out forwards;
         animation-delay: var(--delay, 0s);
     }
 </style>
+<script>
+    function openChat() {
+        // Try to click the n8n chat toggle button
+        const chatToggle = document.querySelector('#n8n-chat [data-test-id="toggle"]') || 
+                          document.querySelector('#n8n-chat button') ||
+                          document.querySelector('#n8n-chat .chat-toggle');
+        if (chatToggle) {
+            chatToggle.click();
+        } else {
+            // If button not found, show a message
+            alert('Chat is loading... Please try again in a moment or look for the chat icon in the bottom right corner.');
+        }
+    }
+</script>
 {% endblock %}

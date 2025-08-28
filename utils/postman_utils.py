@@ -13,11 +13,38 @@ from flask import current_app
 from config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL, OPENAI_API_KEY, OPENAI_MODEL
 
 
+def _load_json_lenient(file_path):
+    """Load JSON allowing removal of // and /* */ comments; raise descriptive errors."""
+    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+        raw = f.read().strip()
+    if not raw:
+        raise ValueError("File is empty")
+    # Fast path: if it starts with { or [ try normal load
+    def _strip_comments(text:str)->str:
+        # remove // comments
+        text = re.sub(r'(^|\s)//.*', '', text)
+        # remove /* */ comments
+        text = re.sub(r'/\*.*?\*/', '', text, flags=re.S)
+        return text
+    cleaned = _strip_comments(raw)
+    # Handle common non-JSON: comma separated numbers
+    if re.fullmatch(r'\d+(,\d+)+', cleaned.replace('\n','')):
+        raise ValueError("Uploaded file is a comma-separated list, not a Postman collection JSON")
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError as e:
+        snippet = raw[:120].replace('\n',' ')
+        raise ValueError(f"Invalid JSON ({e.msg}) near position {e.pos}. Snippet: {snippet}") from e
+
+
 def analyze_postman_collection(postman_file_path):
     """Analyze a Postman collection for correlations and parameters"""
     try:
-        with open(postman_file_path, 'r', encoding='utf-8') as f:
-            collection = json.load(f)
+        # Use lenient loader for clearer errors
+        collection = _load_json_lenient(postman_file_path)
+        # Validate structure
+        if not isinstance(collection, dict) or 'item' not in collection:
+            raise ValueError("File is not a Postman collection export (missing 'item' root key)")
 
         all_items = []
 
@@ -87,8 +114,11 @@ def analyze_postman_collection(postman_file_path):
                         continue
 
                     for resp in prev_item.get("response", []):
+                        body_text = resp.get("body")
+                        if not body_text or not isinstance(body_text, (str, bytes, bytearray)):
+                            continue
                         try:
-                            resp_body = json.loads(resp.get("body", "{}"))
+                            resp_body = json.loads(body_text)
                             jsonpath = find_matching_jsonpath_by_key_and_value(resp_body, param_key, value)
                             if jsonpath:
                                 param_list.append({
@@ -100,7 +130,7 @@ def analyze_postman_collection(postman_file_path):
                                 })
                                 matched = True
                                 break
-                        except json.JSONDecodeError:
+                        except (json.JSONDecodeError, TypeError):
                             continue
                     if matched:
                         break
