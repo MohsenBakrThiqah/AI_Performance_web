@@ -84,15 +84,16 @@
                 <div class="card h-100 border-0 shadow-sm">
                     <div class="card-body text-center p-4">
                         <div class="feature-icon bg-warning bg-gradient rounded-circle p-3 mb-3 mx-auto">
-                            <i class="bi bi-chat-dots text-white fs-2"></i>
+                            <i class="bi bi-diagram-3 text-white fs-2"></i>
                         </div>
-                        <h3 class="h4">AI Chat Assistant</h3>
+                        <h3 class="h4">HAR to JMeter Converter</h3>
                         <p class="text-muted">
-                            Get instant help with performance historical reports, THIQAH KPIs analysis,
-                            and Projects Overview through our AI-powered chat assistant.
-                        </p>                        <button class="btn btn-sm btn-outline-warning" onclick="openChat()">
-                            Start Chat
-                        </button>
+                            Convert HAR files into JMeter Recording XML or full JMX test plans with
+                            URL/method filtering and optional transaction grouping.
+                        </p>
+                        <a href="{{ url_for('har_to_jmeter') }}" class="btn btn-sm btn-outline-warning">
+                            Convert HAR
+                        </a>
                     </div>
                 </div>
             </div>
@@ -120,8 +121,9 @@
     {% if usage_stats %}
     <section class="py-5 fade-in" style="--delay:1.6s">
         <h2 class="h4 mb-4">Platform Usage</h2>
-        <div class="row g-3">
-            <div class="col-6 col-md-3">
+        <!-- Updated to 5 columns per row at md and up -->
+        <div class="row g-3 row-cols-2 row-cols-md-5">
+            <div class="col">
                 <div class="card shadow-sm h-100">
                     <div class="card-body text-center p-3">
                         <div class="fw-semibold small text-muted">Reports Generated</div>
@@ -129,7 +131,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-6 col-md-3">
+            <div class="col">
                 <div class="card shadow-sm h-100">
                     <div class="card-body text-center p-3">
                         <div class="fw-semibold small text-muted">JMeter Correlation Analysis</div>
@@ -137,7 +139,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-6 col-md-3">
+            <div class="col">
                 <div class="card shadow-sm h-100">
                     <div class="card-body text-center p-3">
                         <div class="fw-semibold small text-muted">Correlated JMX (Claude)</div>
@@ -145,7 +147,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-6 col-md-3">
+            <div class="col">
                 <div class="card shadow-sm h-100">
                     <div class="card-body text-center p-3">
                         <div class="fw-semibold small text-muted">Correlated JMX (OpenAI)</div>
@@ -153,7 +155,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-6 col-md-3">
+            <div class="col">
                 <div class="card shadow-sm h-100">
                     <div class="card-body text-center p-3">
                         <div class="fw-semibold small text-muted">Postman Analysis</div>
@@ -161,7 +163,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-6 col-md-3">
+            <div class="col">
                 <div class="card shadow-sm h-100">
                     <div class="card-body text-center p-3">
                         <div class="fw-semibold small text-muted">Postman Basic Converts</div>
@@ -169,7 +171,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-6 col-md-3">
+            <div class="col">
                 <div class="card shadow-sm h-100">
                     <div class="card-body text-center p-3">
                         <div class="fw-semibold small text-muted">Postman AI (Claude)</div>
@@ -177,11 +179,27 @@
                     </div>
                 </div>
             </div>
-            <div class="col-6 col-md-3">
+            <div class="col">
                 <div class="card shadow-sm h-100">
                     <div class="card-body text-center p-3">
                         <div class="fw-semibold small text-muted">Postman AI (OpenAI)</div>
                         <div class="display-6">{{ usage_stats.postman_convert_ai_openai }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body text-center p-3">
+                        <div class="fw-semibold small text-muted">HAR to JMX</div>
+                        <div class="display-6">{{ usage_stats.har_convert_test_plan_jmx }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body text-center p-3">
+                        <div class="fw-semibold small text-muted">HAR to Recording.xml</div>
+                        <div class="display-6">{{ usage_stats.har_convert_recording_xml }}</div>
                     </div>
                 </div>
             </div>
