@@ -37,6 +37,87 @@
             --chat--window--height: 800px;
             --chat--toggle--size: 60px;
         }
+
+        /* Assistant selector overlay */
+        #assistant-selector-overlay {        
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1050; /* above everything */
+            /* Initially hidden until user clicks chat button */
+            display: none;
+        }
+        #assistant-selector {
+            background: #fff;
+            border-radius: 16px;
+            padding: 2.2rem 2.4rem;
+            max-width: 520px;
+            width: 100%;
+            box-shadow: 0 10px 40px -5px rgba(0,0,0,0.3);
+            animation: fadeIn .45s ease;
+        }
+        #assistant-selector h5 { font-weight: 600; }
+        .assistant-option {
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 1.1rem 1.25rem;
+            cursor: pointer;
+            transition: .18s ease;
+            height: 100%;
+            background: #fafafa;
+        }
+        .assistant-option:hover {
+            border-color: #0d6efd;
+            background: #f1f7ff;
+        }
+        .assistant-option.selected {
+            border-color: #0d6efd;
+            background: #e7f1ff;
+        }
+        .assistant-badge {
+            font-size: .75rem;
+            letter-spacing: .5px;
+            font-weight: 600;
+            background: #0d6efd;
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+        #assistant-start-btn:disabled { opacity: .5; cursor: not-allowed; }
+        /* Floating Chat Launch Button */
+        .chat-launch-btn {
+            position: fixed;
+            right: 24px;
+            bottom: 24px;
+            z-index: 1040;
+            border-radius: 50%;
+            width: 64px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 18px -4px rgba(0,0,0,.35);
+            font-size: 1.5rem;
+        }
+        .chat-launch-btn:active { transform: scale(.95); }
+        .change-assistant-btn {
+            position: fixed;
+            right: 96px; /* offset to sit left of n8n toggle (which is bottom-right) */
+            bottom: 24px;
+            z-index: 1040;
+            border-radius: 50%;
+            width: 56px;
+            height: 56px;
+            display: none; /* shown after first selection */
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 18px -4px rgba(0,0,0,.3);
+            font-size: 1.25rem;
+        }
+        .change-assistant-btn:active { transform: scale(.95); }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -81,31 +162,201 @@
         {% block content %}{% endblock %}
     </div>    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
+    <!-- Assistant Type Selector Overlay -->
+    <div id="assistant-selector-overlay">
+        <div id="assistant-selector">
+            <h5 class="mb-2">DualMind AI Assistant</h5>
+            <p class="text-muted mb-4">Select the assistant focus before starting your chat session.</p>
+            <div class="row g-3 mb-3">
+                <div class="col-12 col-md-6">
+                    <div class="assistant-option" data-assistant="business">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="assistant-badge" style="background:#198754">Business</span>
+                            <i class="bi bi-briefcase-fill text-secondary"></i>
+                        </div>
+                        <strong>Business Assistant</strong>
+                        <p class="small text-muted mb-0">KPIs, trends, summaries & high-level performance insights.</p>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="assistant-option" data-assistant="technical">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="assistant-badge" style="background:#0d6efd">Technical</span>
+                            <i class="bi bi-cpu-fill text-secondary"></i>
+                        </div>
+                        <strong>Technical Assistant</strong>
+                        <p class="small text-muted mb-0">Detailed performance metrics, Bottlenecks analysis and APM insights</p>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+                <button id="assistant-cancel-btn" class="btn btn-outline-secondary btn-sm">Close</button>
+                <button id="assistant-start-btn" disabled class="btn btn-primary btn-sm">Start Chat</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Chat Button -->
+    <button id="open-chat-selector" class="btn btn-primary chat-launch-btn" title="Open AI Assistant">
+        <i class="bi bi-chat-dots-fill"></i>
+    </button>
+    <!-- Change Assistant Button (appears after first assistant selection) -->
+    <button id="change-assistant-btn" class="btn btn-outline-secondary change-assistant-btn" title="Change Assistant">
+        <i class="bi bi-arrow-repeat"></i>
+    </button>
+
     <!-- n8n Chat Widget -->
     <div id="n8n-chat"></div>
     <script type="module">
         import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
 
-        createChat({
-            webhookUrl: 'http://localhost:5678/webhook/ae3533ef-74ca-482b-ab6e-38cc36294dc1/chat',
-            target: '#n8n-chat',
-            mode: 'window',
-            showWelcomeScreen: true,
-            initialMessages: [
-                'Hi there! 👋',
-                'I\'m your AI Performance Testing Assistant. How can I help you today?'
-            ],
-            i18n: {
-                en: {
-                    title: 'AI Performance Chat Assistant',
-                    subtitle: 'Get instant help with performance historical reports',
-                    getStarted: 'Start Chat',
-                    inputPlaceholder: 'Ask me about performance testing...',
-                },
-            },
-            loadPreviousSession: true,
-            enableStreaming: false
+        const webhookMap = {
+            business: 'http://localhost:5678/webhook/0a2ae645-c594-46c9-8bb6-3f87144f871a/chat',
+            technical: 'http://localhost:5678/webhook/ae3533ef-74ca-482b-ab6e-38cc36294dc1/chat'
+        };
+
+        let selectedAssistant = null;
+        let chatInitialized = false;
+
+        const overlay = document.getElementById('assistant-selector-overlay');
+        const startBtn = document.getElementById('assistant-start-btn');
+        const cancelBtn = document.getElementById('assistant-cancel-btn');
+        const optionEls = document.querySelectorAll('.assistant-option');
+        const openChatBtn = document.getElementById('open-chat-selector');
+        const changeAssistantBtn = document.getElementById('change-assistant-btn');
+
+        function openAssistantSelector(isSwitch=false){
+            // reset selection state
+            optionEls.forEach(o => o.classList.remove('selected'));
+            selectedAssistant = null;
+            startBtn.disabled = true;
+            startBtn.textContent = isSwitch ? 'Switch Assistant' : 'Start Chat';
+            overlay.style.display = 'flex';
+        }
+
+        openChatBtn.addEventListener('click', () => {
+            if (chatInitialized) {
+                forceOpenChatWindow();
+            } else {
+                openAssistantSelector(false);
+            }
         });
+
+        changeAssistantBtn.addEventListener('click', () => {
+            openAssistantSelector(true);
+        });
+
+        optionEls.forEach(el => {
+            el.addEventListener('click', () => {
+                optionEls.forEach(o => o.classList.remove('selected'));
+                el.classList.add('selected');
+                selectedAssistant = el.getAttribute('data-assistant');
+                startBtn.disabled = false;
+            });
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            overlay.style.display = 'none';
+        });
+
+        startBtn.addEventListener('click', () => {
+            if(!selectedAssistant) return;
+            const switching = chatInitialized;
+            overlay.style.display = 'none';
+            if(!switching){
+                openChatBtn.style.display = 'none'; // hide initial launcher after first start
+            }
+            initChat(selectedAssistant, switching);
+        });
+
+        function initChat(type, isSwitch=false) {
+            // If switching, remove existing chat elements before re-creating
+            if (isSwitch) {
+                // Remove existing toggle
+                document.querySelectorAll('.n8n-chat-toggle').forEach(el => el.remove());
+                // Clear chat container
+                const container = document.getElementById('n8n-chat');
+                if (container) container.innerHTML = '';
+            }
+            const isBusiness = type === 'business';
+            const initialMessages = isBusiness ? [
+                'Hi there! 👋, I\'m your Business AI Performance Testing Assistant, below is a guideline for you to help you ask your questions:',
+                '1. Specify project name exactly (E.g. MAZAD, COO_Saudi, Qiyadah....,etc).',
+                '2. Specify what duration you need to get data from (e.g. Get max number of users can be handled by Mazad project within THIQAH Standards during the last 3 months).',
+                '3. If duration isn\'t specifies I\'ll extract based on best overall results even if it\'s old tests.',
+                '4. Make your questions clear as possible to get accurate results'
+            ] : [
+                'Hi there! 👋',
+                "I'm your Technical Performance Testing Assistant. How can I help you today?"
+            ];
+
+            createChat({
+                webhookUrl: webhookMap[type],
+                target: '#n8n-chat',
+                mode: 'window',
+                showWelcomeScreen: true,
+                initialMessages,
+                i18n: {
+                    en: {
+                        title: isBusiness ? 'Business Performance AI Assistant' : 'Technical Performance AI Assistant',
+                        subtitle: isBusiness ? 'Insights, summaries & KPI guidance' : 'Deep dive into performance analysis',
+                        getStarted: 'Start Chat',
+                        inputPlaceholder: isBusiness ? 'Ask about KPIs, trends...' : 'Ask about errors, metrics, correlations...'
+                    }
+                },
+                loadPreviousSession: !isSwitch, // load previous only on first init
+                enableStreaming: false
+            });
+            chatInitialized = true;
+            changeAssistantBtn.style.display = 'flex';
+            autoOpenChatWindow();
+        }
+
+        // Attempt to programmatically open the chat window after it mounts
+        function autoOpenChatWindow() {
+            let attempts = 0;
+            const maxAttempts = 20; // ~4s at 200ms
+            const tryOpen = () => {
+                attempts++;
+                if (forceOpenChatWindow()) {
+                    clearInterval(intervalId);
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(intervalId);
+                }
+            };
+            const intervalId = setInterval(tryOpen, 200);
+            tryOpen();
+
+            // Fallback MutationObserver in case dynamic rendering is slower
+            const observer = new MutationObserver(() => {
+                if (forceOpenChatWindow()) {
+                    observer.disconnect();
+                }
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+            setTimeout(() => observer.disconnect(), 5000);
+        }
+
+        function forceOpenChatWindow() {
+            // Possible toggle/button selectors used by n8n widget
+            const toggle = document.querySelector('.n8n-chat-toggle, .n8n-chat-toggle button, .chat-window-wrapper.n8n-chat button, .chat-window-wrapper.n8n-chat');
+            if (toggle) {
+                toggle.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                return true;
+            }
+            return false;
+        }
+
+        // After chat renders, ensure change assistant button sits left of toggle if needed
+        const repositionObserver = new MutationObserver(() => {
+            const toggle = document.querySelector('.n8n-chat-toggle');
+            if (toggle && chatInitialized) {
+                // Ensure our change button not colliding (our fixed right:96px should suffice)
+                changeAssistantBtn.style.display = 'flex';
+            }
+        });
+        repositionObserver.observe(document.body, { childList: true, subtree: true });
+        setTimeout(()=>repositionObserver.disconnect(), 8000);
     </script>
     
     {% block extra_js %}{% endblock %}

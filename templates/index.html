@@ -116,6 +116,78 @@
             </div>
         </div>
     </section>
+
+    {% if usage_stats %}
+    <section class="py-5 fade-in" style="--delay:1.6s">
+        <h2 class="h4 mb-4">Platform Usage</h2>
+        <div class="row g-3">
+            <div class="col-6 col-md-3">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body text-center p-3">
+                        <div class="fw-semibold small text-muted">Reports Generated</div>
+                        <div class="display-6">{{ usage_stats.report_generator }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body text-center p-3">
+                        <div class="fw-semibold small text-muted">JMeter Correlation Analysis</div>
+                        <div class="display-6">{{ usage_stats.correlations_analysis }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body text-center p-3">
+                        <div class="fw-semibold small text-muted">Correlated JMX (Claude)</div>
+                        <div class="display-6">{{ usage_stats.correlations_jmx_claude }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body text-center p-3">
+                        <div class="fw-semibold small text-muted">Correlated JMX (OpenAI)</div>
+                        <div class="display-6">{{ usage_stats.correlations_jmx_openai }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body text-center p-3">
+                        <div class="fw-semibold small text-muted">Postman Analysis</div>
+                        <div class="display-6">{{ usage_stats.postman_analysis }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body text-center p-3">
+                        <div class="fw-semibold small text-muted">Postman Basic Converts</div>
+                        <div class="display-6">{{ usage_stats.postman_convert_basic }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body text-center p-3">
+                        <div class="fw-semibold small text-muted">Postman AI (Claude)</div>
+                        <div class="display-6">{{ usage_stats.postman_convert_ai_claude }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body text-center p-3">
+                        <div class="fw-semibold small text-muted">Postman AI (OpenAI)</div>
+                        <div class="display-6">{{ usage_stats.postman_convert_ai_openai }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    {% endif %}
 </div>
 {% endblock %}
 

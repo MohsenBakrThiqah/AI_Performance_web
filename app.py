@@ -16,6 +16,42 @@ from utils.postman_utils import analyze_postman_collection, convert_postman_to_j
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+USAGE_STATS_FILE = os.path.join(os.path.dirname(__file__), 'usage_stats.json')
+USAGE_KEYS = [
+    'report_generator',
+    'correlations_analysis',
+    'correlations_jmx_claude',
+    'correlations_jmx_openai',
+    'postman_analysis',
+    'postman_convert_basic',
+    'postman_convert_ai_claude',
+    'postman_convert_ai_openai'
+]
+
+def _load_usage_stats():
+    if not os.path.exists(USAGE_STATS_FILE):
+        return {k: 0 for k in USAGE_KEYS}
+    try:
+        with open(USAGE_STATS_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        # Ensure all keys exist
+        for k in USAGE_KEYS:
+            data.setdefault(k, 0)
+        return data
+    except Exception:
+        return {k: 0 for k in USAGE_KEYS}
+
+def _save_usage_stats(stats):
+    try:
+        with open(USAGE_STATS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(stats, f, indent=2)
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"Failed to save usage stats: {e}")
+
+def increment_usage(key):
+    stats = _load_usage_stats()
+    stats[key] = stats.get(key, 0) + 1
+    _save_usage_stats(stats)
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -24,7 +60,8 @@ def create_app(config_class=Config):
 
     @app.route('/')
     def index():
-        return render_template('index.html')
+        usage_stats = _load_usage_stats()
+        return render_template('index.html', usage_stats=usage_stats)
 
     @app.route('/report-generator', methods=['GET', 'POST'])
     def report_generator():
@@ -69,6 +106,7 @@ def create_app(config_class=Config):
                 report_folder.save(upload_path)
 
                 result_path = generate_jmeter_report(upload_path, form_data)
+                increment_usage('report_generator')
 
                 return send_from_directory(
                     os.path.dirname(result_path),
@@ -105,10 +143,12 @@ def create_app(config_class=Config):
 
                 url_filter = request.form.get('url_filter', '')
                 results = analyze_jmeter_correlations(filepath, url_filter)
+                increment_usage('correlations_analysis')
 
                 if request.form.get('use_claude') == 'on' and results:
                     try:
                         jmx_path = generate_correlated_jmx_with_claude(results, filepath)
+                        increment_usage('correlations_jmx_claude')
                         return send_file(
                             jmx_path,
                             as_attachment=True,
@@ -121,15 +161,16 @@ def create_app(config_class=Config):
 
                 if request.form.get('use_openai') == 'on' and results:
                     try:
-                        jmx_path = generate_correlated_jmx_with_openai(results, filepath)  # Changed from generate_correlated_jmx_with_claude
+                        jmx_path = generate_correlated_jmx_with_openai(results, filepath)
+                        increment_usage('correlations_jmx_openai')
                         return send_file(
                             jmx_path,
                             as_attachment=True,
-                            download_name=f"openai_test_plan_{uuid.uuid4().hex[:8]}.jmx",  # Changed prefix
+                            download_name=f"openai_test_plan_{uuid.uuid4().hex[:8]}.jmx",
                             mimetype='application/xml'
                         )
                     except Exception as e:
-                        app.logger.error(f"Error generating JMX with OpenAI: {str(e)}")  # Updated error message
+                        app.logger.error(f"Error generating JMX with OpenAI: {str(e)}")
                         flash('Error generating JMX file. Please try again.', 'error')
 
                 return render_template('correlations.html', 
@@ -164,7 +205,7 @@ def create_app(config_class=Config):
 
                 if action == 'analyze':
                     analysis = analyze_postman_collection(upload_path)
-                    # Store the filename in session for Claude generation
+                    increment_usage('postman_analysis')
                     session['analyzed_file'] = filename
                     return render_template('postman.html',
                                            analysis=analysis,
@@ -178,9 +219,10 @@ def create_app(config_class=Config):
                             postman_json = json.load(f)
                         correlation_data = analyze_postman_collection(upload_path)
                         output_path = ask_claude_for_jmx(postman_json, correlation_data)
-                        # output_path = ask_openai_for_jmx(postman_json, correlation_data)
+                        increment_usage('postman_convert_ai_claude')
                     else:
                         output_path = convert_postman_to_jmx(upload_path)
+                        increment_usage('postman_convert_basic')
 
                     return send_from_directory(
                         os.path.dirname(output_path),
@@ -197,76 +239,51 @@ def create_app(config_class=Config):
 
     @app.route('/generate_jmx_with_openai', methods=['POST'])
     def generate_jmx_with_openai():
-        # Get the filename from session that was stored during analysis
         if 'analyzed_file' not in session:
             return jsonify({"error": "No analyzed file found. Please analyze the collection first."}), 400
-
         filename = session['analyzed_file']
         upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-
         try:
-            # Verify the file still exists
             if not os.path.exists(upload_path):
                 return jsonify({"error": "Analyzed file no longer available. Please upload again."}), 400
-
-            # Analyze the collection for correlations
             with open(upload_path, 'r', encoding='utf-8') as f:
                 postman_json = json.load(f)
-
             correlation_data = analyze_postman_collection(upload_path)
-
-            # Generate JMX with Claude
-            # jmx_path = ask_claude_for_jmx(postman_json, correlation_data)
             jmx_path = ask_openai_for_jmx(postman_json, correlation_data)
-
-            # Return the generated JMX file
+            increment_usage('postman_convert_ai_openai')
             return send_file(
                 jmx_path,
                 as_attachment=True,
-                download_name=f"claude_{filename.replace('.json', '.jmx')}",
+                download_name=f"openai_{filename.replace('.json', '.jmx')}",
                 mimetype='application/xml'
             )
-
         except Exception as e:
             app.logger.error(f"Error in JMX generation: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
     @app.route('/generate_jmx_with_claude', methods=['POST'])
     def generate_jmx_with_claude():
-        # Get the filename from session that was stored during analysis
         if 'analyzed_file' not in session:
             return jsonify({"error": "No analyzed file found. Please analyze the collection first."}), 400
-
         filename = session['analyzed_file']
         upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-
         try:
-            # Verify the file still exists
             if not os.path.exists(upload_path):
                 return jsonify({"error": "Analyzed file no longer available. Please upload again."}), 400
-
-            # Analyze the collection for correlations
             with open(upload_path, 'r', encoding='utf-8') as f:
                 postman_json = json.load(f)
-
             correlation_data = analyze_postman_collection(upload_path)
-
-            # Generate JMX with Claude
             jmx_path = ask_claude_for_jmx(postman_json, correlation_data)
-            # jmx_path = ask_openai_for_jmx(postman_json, correlation_data)
-
-            # Return the generated JMX file
+            increment_usage('postman_convert_ai_claude')
             return send_file(
                 jmx_path,
                 as_attachment=True,
                 download_name=f"claude_{filename.replace('.json', '.jmx')}",
                 mimetype='application/xml'
             )
-
         except Exception as e:
             app.logger.error(f"Error in JMX generation: {str(e)}")
             return jsonify({"error": str(e)}), 500
-
 
     @app.route('/favicon.ico')
     def favicon():
