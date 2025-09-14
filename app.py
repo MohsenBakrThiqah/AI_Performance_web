@@ -11,6 +11,13 @@ from utils.report_utils import generate_jmeter_report
 from utils.correlation_utils import analyze_jmeter_correlations, generate_correlated_jmx_with_claude, \
     generate_correlated_jmx_with_openai
 from utils.postman_utils import analyze_postman_collection, convert_postman_to_jmx, ask_claude_for_jmx, ask_openai_for_jmx
+from utils.har_utils import (
+    extract_base_urls,
+    extract_methods,
+    extract_path_extensions,
+    har_to_jmeter_xml,
+    har_to_jmeter_jmx
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -25,7 +32,9 @@ USAGE_KEYS = [
     'postman_analysis',
     'postman_convert_basic',
     'postman_convert_ai_claude',
-    'postman_convert_ai_openai'
+    'postman_convert_ai_openai',
+    'har_convert_recording_xml',
+    'har_convert_test_plan_jmx'
 ]
 
 def _load_usage_stats():
@@ -284,6 +293,106 @@ def create_app(config_class=Config):
         except Exception as e:
             app.logger.error(f"Error in JMX generation: {str(e)}")
             return jsonify({"error": str(e)}), 500
+
+    @app.route('/har-to-jmeter', methods=['GET', 'POST'])
+    def har_to_jmeter():
+        uploaded_file = session.get('har_uploaded_file')
+        extracted = None
+        if request.method == 'POST':
+            action = request.form.get('action')
+            if action == 'upload':
+                if 'har_file' not in request.files:
+                    flash('No HAR file part', 'error')
+                    return redirect(request.url)
+                har_file = request.files['har_file']
+                if har_file.filename == '':
+                    flash('No file selected', 'error')
+                    return redirect(request.url)
+                if not har_file.filename.lower().endswith('.har'):
+                    flash('Please upload a .har file', 'error')
+                    return redirect(request.url)
+                filename = secure_filename(har_file.filename)
+                save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                har_file.save(save_path)
+                session['har_uploaded_file'] = filename
+                try:
+                    base_urls = extract_base_urls(save_path)
+                    methods = extract_methods(save_path)
+                    extensions = extract_path_extensions(save_path)
+                    extracted = {
+                        'base_urls': base_urls,
+                        'methods': methods,
+                        'extensions': extensions
+                    }
+                except Exception as e:
+                    app.logger.error(f"Error extracting HAR metadata: {e}")
+                    flash('Failed to parse HAR file', 'error')
+            elif action in ('convert_xml', 'convert_jmx'):
+                if not uploaded_file:
+                    flash('No HAR file uploaded yet', 'error')
+                    return redirect(url_for('har_to_jmeter'))
+                save_path = os.path.join(app.config['UPLOAD_FOLDER'], uploaded_file)
+                if not os.path.exists(save_path):
+                    flash('Uploaded HAR file missing. Upload again.', 'error')
+                    session.pop('har_uploaded_file', None)
+                    return redirect(url_for('har_to_jmeter'))
+                # Gather selections
+                selected_urls = request.form.getlist('selected_urls') or None
+                selected_methods = request.form.getlist('selected_methods') or None
+                # IMPORTANT: Do NOT collapse an empty extensions selection to None; empty list means user unchecked all
+                selected_extensions = request.form.getlist('selected_extensions')
+                group_txn = request.form.get('group_txn') == 'on'
+                base_name = os.path.splitext(uploaded_file)[0]
+                if action == 'convert_xml':
+                    out_name = f"{base_name}_recording.xml"
+                    out_path = os.path.join(app.config['UPLOAD_FOLDER'], out_name)
+                    success, message = har_to_jmeter_xml(
+                        save_path,
+                        out_path,
+                        selected_urls,
+                        selected_methods,
+                        selected_extensions,
+                        status_callback=None
+                    )
+                    if success:
+                        increment_usage('har_convert_recording_xml')
+                        return send_file(out_path, as_attachment=True, download_name=out_name, mimetype='application/xml')
+                    else:
+                        flash(message, 'error')
+                else:  # convert_jmx
+                    out_name = f"{base_name}.jmx"
+                    out_path = os.path.join(app.config['UPLOAD_FOLDER'], out_name)
+                    success, message = har_to_jmeter_jmx(
+                        save_path,
+                        out_path,
+                        selected_urls,
+                        selected_methods,
+                        selected_extensions,
+                        status_callback=None,
+                        use_transaction_controllers=group_txn
+                    )
+                    if success:
+                        increment_usage('har_convert_test_plan_jmx')
+                        return send_file(out_path, as_attachment=True, download_name=out_name, mimetype='application/xml')
+                    else:
+                        flash(message, 'error')
+                # Rebuild extracted lists for redisplay
+                try:
+                    base_urls = extract_base_urls(save_path)
+                    methods = extract_methods(save_path)
+                    extensions = extract_path_extensions(save_path)
+                    extracted = {
+                        'base_urls': base_urls,
+                        'methods': methods,
+                        'extensions': extensions,
+                        'selected_urls': selected_urls or [],
+                        'selected_methods': selected_methods or [],
+                        'selected_extensions': selected_extensions or [],
+                        'group_txn': group_txn
+                    }
+                except Exception:
+                    pass
+        return render_template('har_converter.html', extracted=extracted, uploaded_file=uploaded_file)
 
     @app.route('/favicon.ico')
     def favicon():

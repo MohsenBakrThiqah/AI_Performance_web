@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}HAR to JMeter Converter{% endblock %}
+{% block content %}
+<ul class="nav nav-pills mb-3">
+  <li class="nav-item"><a class="nav-link" href="{{ url_for('correlations') }}">Correlations Finder</a></li>
+  <li class="nav-item"><a class="nav-link active" href="{{ url_for('har_to_jmeter') }}">HAR to JMeter</a></li>
+</ul>
+<div class="card mb-4">
+  <div class="card-header bg-primary text-white">
+    <h2 class="h5 mb-0">HAR to JMeter Converter</h2>
+  </div>
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data" class="mb-4">
+      <input type="hidden" name="action" value="upload">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-6">
+          <label class="form-label">HAR File</label>
+          <input type="file" class="form-control" name="har_file" accept=".har" required>
+        </div>
+        <div class="col-md-3">
+          <button type="submit" class="btn btn-primary w-100"><i class="bi bi-upload"></i> Upload & Parse</button>
+        </div>
+        <div class="col-md-3">
+          {% if uploaded_file %}
+          <div class="alert alert-success py-2 mb-0"><small>Uploaded: {{ uploaded_file }}</small></div>
+          {% else %}
+          <div class="text-muted small">No HAR uploaded yet.</div>
+          {% endif %}
+        </div>
+      </div>
+    </form>
+
+    {% if extracted %}
+    <form method="post">
+      <input type="hidden" name="action" id="convertAction" value="convert_xml">
+      <div class="row g-4">
+        <div class="col-md-4">
+          <h6>Base URLs</h6>
+          <div class="border rounded p-2 small scroll-box" style="max-height:440px; overflow:auto;">
+            {% for url in extracted.base_urls %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="selected_urls" value="{{ url }}" id="url_{{ loop.index }}" {% if not extracted.selected_urls or url in extracted.selected_urls %}checked{% endif %}>
+              <label class="form-check-label" for="url_{{ loop.index }}">{{ url }}</label>
+            </div>
+            {% endfor %}
+            {% if not extracted.base_urls %}<div class="text-muted">None found</div>{% endif %}
+          </div>
+        </div>
+        <div class="col-md-4">
+          <h6>HTTP Methods</h6>
+            <div class="border rounded p-2 small scroll-box" style="max-height:440px; overflow:auto;">
+            {% for m in extracted.methods %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="selected_methods" value="{{ m }}" id="m_{{ loop.index }}" {% if not extracted.selected_methods or m in extracted.selected_methods %}checked{% endif %}>
+              <label class="form-check-label" for="m_{{ loop.index }}">{{ m }}</label>
+            </div>
+            {% endfor %}
+            {% if not extracted.methods %}<div class="text-muted">None found</div>{% endif %}
+          </div>
+        </div>
+        <div class="col-md-4">
+          <h6>Path Extensions</h6>
+          <div class="border rounded p-2 small scroll-box" style="max-height:440px; overflow:auto;">
+            {% for ext in extracted.extensions %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="selected_extensions" value="{{ ext }}" id="ext_{{ loop.index }}" {% if not extracted.selected_extensions or ext in extracted.selected_extensions %}checked{% endif %}>
+              <label class="form-check-label" for="ext_{{ loop.index }}">{{ ext }}</label>
+            </div>
+            {% endfor %}
+            {% if not extracted.extensions %}<div class="text-muted">None found</div>{% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="mt-3 form-check">
+        <input class="form-check-input" type="checkbox" id="group_txn" name="group_txn" {% if extracted.group_txn %}checked{% endif %}>
+        <label class="form-check-label" for="group_txn">Group samplers by minute (Transaction Controllers)</label>
+      </div>
+      <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-success" onclick="document.getElementById('convertAction').value='convert_xml'">Convert to recording.xml</button>
+        <button type="submit" class="btn btn-outline-primary" onclick="document.getElementById('convertAction').value='convert_jmx'">Convert to Test Plan (.jmx)</button>
+        <a href="{{ url_for('har_to_jmeter') }}" class="btn btn-secondary">Reset</a>
+      </div>
+    </form>
+    {% else %}
+      <p class="text-muted small mb-0">Upload a HAR file to enable filtering and conversion options.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
