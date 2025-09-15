@@ -19,7 +19,7 @@
             </div>
         </div>
         <div class="col-md-6">
-            <img src="{{ url_for('static', filename='images/logo.png') }}"
+            <img src="{{ url_for('static', filename='images/logo_main.png') }}"
                  alt="JMeter Dashboard" class="img-fluid rounded ">
         </div>
     </div>
@@ -99,24 +99,6 @@
             </div>
         </div>
     </section>    <!-- Getting Started Section -->
-    <section class="py-5 bg-dark text-white rounded-3 fade-in" style="--delay: 1.4s">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <h2>Ready to get started?</h2>
-                    <p class="lead mb-0">
-                        Begin creating professional performance test reports in minutes,
-                        not hours.
-                    </p>
-                </div>
-                <div class="col-md-4 text-md-end mt-3 mt-md-0">
-                    <a href="{{ url_for('report_generator') }}" class="btn btn-light btn-lg">
-                        <i class="bi bi-rocket"></i> Launch Now
-                    </a>
-                </div>
-            </div>
-        </div>
-    </section>
 
     {% if usage_stats %}
     <section class="py-5 fade-in" style="--delay:1.6s">

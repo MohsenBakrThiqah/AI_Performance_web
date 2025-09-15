@@ -16,7 +16,7 @@ load_dotenv()
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'your-secret-key-here'
     UPLOAD_FOLDER = 'uploads'
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
+    MAX_CONTENT_LENGTH = 150 * 1024 * 1024  # 150MB
     OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
     ALLOWED_EXTENSIONS = {'json', 'xml', 'html', 'jtl'}
 

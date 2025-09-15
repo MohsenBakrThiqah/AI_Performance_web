@@ -31,7 +31,7 @@
 
         /* Custom styling for n8n chat widget */
         :root {
-            --chat--color-primary: #0d6efd;
+            --chat--color-primary: #3CB4E5; /* updated */
             --chat--color-secondary: #6c757d;
             --chat--window--width: 1000px;
             --chat--window--height: 800px;
@@ -70,18 +70,18 @@
             background: #fafafa;
         }
         .assistant-option:hover {
-            border-color: #0d6efd;
-            background: #f1f7ff;
+            border-color: #3CB4E5;
+            background: #ECF9FD; /* adjusted lighter hover */
         }
         .assistant-option.selected {
-            border-color: #0d6efd;
-            background: #e7f1ff;
+            border-color: #3CB4E5;
+            background: #D9F3FB; /* adjusted selected */
         }
         .assistant-badge {
             font-size: .75rem;
             letter-spacing: .5px;
             font-weight: 600;
-            background: #0d6efd;
+            background: #3CB4E5;
             color: #fff;
             padding: 2px 8px;
             border-radius: 20px;
@@ -125,7 +125,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
-                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" height="30" class="d-inline-block align-top">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" height="40" class="d-inline-block align-top">
                 THIQAH AI Performance Assistant
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -136,11 +136,16 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('report_generator') }}">Report Generator</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('correlations') }}">Web App JMX Generator</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('postman_tools') }}">Postman Tools</a>
+                    <!-- Replaced individual tabs with dropdown -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="jmxDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Scriping Tools
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="jmxDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('postman_tools') }}">Postman Tools</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('correlations') }}">Correlations Finder</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('har_to_jmeter') }}">HAR to JMeter</a></li>
+                        </ul>
                     </li>
                 </ul>
             </div>
@@ -181,7 +186,7 @@
                 <div class="col-12 col-md-6">
                     <div class="assistant-option" data-assistant="technical">
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <span class="assistant-badge" style="background:#0d6efd">Technical</span>
+                            <span class="assistant-badge" style="background:#3CB4E5">Technical</span>
                             <i class="bi bi-cpu-fill text-secondary"></i>
                         </div>
                         <strong>Technical Assistant</strong>

@@ -12,6 +12,34 @@ body {
     padding: 0.75rem 1rem;
 }
 
+/* New theme override for primary background */
+.bg-primary {
+    background-color: #3CB4E5 !important;
+}
+
+/* Ensure dark navbar text remains legible on new color */
+.navbar-dark .navbar-brand,
+.navbar-dark .navbar-nav .nav-link {
+    color: #ffffff;
+}
+.navbar-dark .navbar-nav .nav-link:hover,
+.navbar-dark .navbar-nav .nav-link:focus {
+    color: #e2f6fc;
+}
+.navbar-dark .navbar-nav .nav-link.active,
+.navbar-dark .navbar-nav .nav-link.show {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+/* Optional toggler icon contrast */
+.navbar-dark .navbar-toggler {
+    border-color: rgba(255,255,255,0.4);
+}
+.navbar-dark .navbar-toggler-icon {
+    filter: brightness(0) invert(1);
+}
+
 .navbar-brand {
     font-weight: 600;
     display: flex;
@@ -36,7 +64,7 @@ body {
 }
 
 .card-header {
-    background-color: #0d6efd;
+    background-color: #3CB4E5;
     color: white;
     border-radius: 8px 8px 0 0 !important;
     padding: 12px 20px;
@@ -52,8 +80,8 @@ body {
 }
 
 .form-control:focus, .form-select:focus {
-    border-color: #86b7fe;
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    border-color: #8fd8f2;
+    box-shadow: 0 0 0 0.25rem rgba(60, 180, 229, 0.35);
 }
 
 .form-label {
@@ -62,13 +90,13 @@ body {
 }
 
 .form-check-input:checked {
-    background-color: #0d6efd;
-    border-color: #0d6efd;
+    background-color: #3CB4E5;
+    border-color: #3CB4E5;
 }
 
 /* Button Styles */
 .btn-primary {
-    background-color: #0d6efd;
+    background-color: #3CB4E5;
     border: none;
     padding: 10px 20px;
     border-radius: 4px;
@@ -77,7 +105,7 @@ body {
 }
 
 .btn-primary:hover {
-    background-color: #0b5ed7;
+    background-color: #27a9df;
     transform: translateY(-1px);
 }
 
@@ -98,7 +126,7 @@ body {
 }
 
 .progress-bar {
-    background-color: #0d6efd;
+    background-color: #3CB4E5;
 }
 
 /* Table Styles */
@@ -125,7 +153,7 @@ body {
 }
 
 #resultsTable tr:hover {
-    background-color: rgba(13, 110, 253, 0.05);
+    background-color: rgba(60, 180, 229, 0.08);
 }
 
 /* Correlation Results Styles */
@@ -134,7 +162,7 @@ body {
     padding: 15px;
     background-color: #f8f9fa;
     border-radius: 4px;
-    border-left: 4px solid #0d6efd;
+    border-left: 4px solid #3CB4E5;
 }
 
 .correlation-param {
@@ -192,11 +220,11 @@ body {
     padding: 20px;
     border-radius: 8px;
     margin: 20px 0;
-    border-left: 4px solid #0d6efd;
+    border-left: 4px solid #3CB4E5;
 }
 
 .gpt-analysis h3 {
-    color: #0d6efd;
+    color: #3CB4E5;
     margin-bottom: 15px;
 }
 
@@ -218,12 +246,12 @@ footer {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #0d6efd;
+    background: #3CB4E5;
     border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #0b5ed7;
+    background: #27a9df;
 }
 
 /* Tab Styles */
@@ -235,13 +263,13 @@ footer {
 }
 
 .nav-tabs .nav-link.active {
-    color: #0d6efd;
+    color: #3CB4E5;
     background-color: transparent;
-    border-bottom: 3px solid #0d6efd;
+    border-bottom: 3px solid #3CB4E5;
 }
 
 .nav-tabs .nav-link:hover:not(.active) {
-    color: #0d6efd;
+    color: #3CB4E5;
     border-bottom: 3px solid #dee2e6;
 }
 
@@ -289,7 +317,7 @@ textarea.form-control {
 .section-header {
     font-size: 1.25rem;
     font-weight: 600;
-    color: #0d6efd;
+    color: #3CB4E5;
     margin: 20px 0 15px;
     padding-bottom: 8px;
     border-bottom: 2px solid #f0f0f0;
@@ -297,7 +325,7 @@ textarea.form-control {
 
 /* Parameter Highlight */
 .param-highlight {
-    background-color: #e7f1ff;
+    background-color: #e2f6fc;
     padding: 2px 4px;
     border-radius: 3px;
     font-family: monospace;
@@ -348,7 +376,7 @@ textarea.form-control {
 }
 
 .preserve-whitespace strong {
-    color: #0d6efd;
+    color: #3CB4E5;
     display: block;
     margin-top: 0.5em;
     margin-bottom: 0.3em;
