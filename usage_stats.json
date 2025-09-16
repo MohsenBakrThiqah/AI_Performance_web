@@ -1,12 +1,12 @@
 {
-  "report_generator": 15,
-  "correlations_analysis": 6,
+  "report_generator": 18,
+  "correlations_analysis": 10,
   "correlations_jmx_claude": 0,
   "correlations_jmx_openai": 0,
-  "postman_analysis": 3,
-  "postman_convert_basic": 5,
+  "postman_analysis": 6,
+  "postman_convert_basic": 8,
   "postman_convert_ai_claude": 0,
   "postman_convert_ai_openai": 0,
-  "har_convert_recording_xml": 2,
-  "har_convert_test_plan_jmx": 19
+  "har_convert_recording_xml": 5,
+  "har_convert_test_plan_jmx": 24
 }
