@@ -217,6 +217,31 @@ document.addEventListener('DOMContentLoaded', function() {
     tables.forEach(table => {
         makeTableResponsive(table);
     });
+
+    // Chaos Experiments dynamic fields (Report Generator)
+    (function initChaosExperiments(){
+        const select = document.getElementById('chaos_experiments_count');
+        const container = document.getElementById('chaosExperimentsContainer');
+        const generateBtn = document.getElementById('generateChaosBtn');
+        if(!select || !container || !generateBtn) return; // Not on this page
+
+        function buildExperiment(index){
+            return `\n<div class="chaos-exp-card">\n  <h5>Experiment #${index}</h5>\n  <div class=\"mb-3\">\n    <label class=\"form-label\" for=\"chaos_experiment_${index}_title\">Title <span class=\"text-danger\">*</span></label>\n    <input type=\"text\" class=\"form-control\" id=\"chaos_experiment_${index}_title\" name=\"chaos_experiment_${index}_title\" required />\n  </div>\n  <div class=\"mb-3\">\n    <label class=\"form-label\" for=\"chaos_experiment_${index}_status\">Status <span class=\"text-danger\">*</span></label>\n    <select class=\"form-select\" id=\"chaos_experiment_${index}_status\" name=\"chaos_experiment_${index}_status\" required>\n      <option value=\"\">Select...</option>\n      <option value=\"Passed\">Passed</option>\n      <option value=\"Partially Passed\">Partially Passed</option>\n      <option value=\"Failed\">Failed</option>\n    </select>\n  </div>\n  <div class=\"mb-3\">\n    <label class=\"form-label\" for=\"chaos_experiment_${index}_description\">Description <span class=\"text-danger\">*</span></label>\n    <textarea class=\"form-control\" rows=\"4\" id=\"chaos_experiment_${index}_description\" name=\"chaos_experiment_${index}_description\" required></textarea>\n  </div>\n</div>`;
+        }
+        function render(){
+            const count = parseInt(select.value || '0', 10);
+            container.innerHTML='';
+            if(count > 0){
+                container.classList.remove('d-none');
+                for(let i=1;i<=count;i++) container.insertAdjacentHTML('beforeend', buildExperiment(i));
+                const collapseEl = document.getElementById('chaosExperimentsWrapper');
+                if (collapseEl) bootstrap.Collapse.getOrCreateInstance(collapseEl, {toggle:false}).show();
+            } else {
+                container.classList.add('d-none');
+            }
+        }
+        generateBtn.addEventListener('click', render);
+    })();
 });
 
 // Helper functions
@@ -225,18 +250,20 @@ function formatFileSize(bytes) {
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
+    const val = (bytes / Math.pow(k, i)).toFixed(2);
+    return `${val} ${sizes[i]}`;
 }
 
 function syntaxHighlight(json) {
-    if (typeof json != 'string') {
-        json = JSON.stringify(json, undefined, 2);
+    if (typeof json !== 'string') {
+        json = JSON.stringify(json, null, 2);
     }
     json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, function (match) {
+    const regex = /(\"(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\\"])*\"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g;
+    return json.replace(regex, function (match) {
         let cls = 'text-dark';
-        if (/^"/.test(match)) {
-            if (/:$/.test(match)) {
+        if (/^\"/.test(match)) {
+            if (/\:$/.test(match)) {
                 cls = 'text-primary';
             } else {
                 cls = 'text-success';

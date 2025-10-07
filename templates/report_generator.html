@@ -204,6 +204,33 @@ Examples:
                 </div>
             </div>
 
+            <!-- Chaos Experiments Section -->
+            <div class="card mb-3 fade-in" style="--delay: 1.25s">
+                <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#chaosExperimentsWrapper">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>Chaos Experiments</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                </div>
+                <div class="collapse" id="chaosExperimentsWrapper">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="chaos_experiments_count" class="form-label">Number of Experiments</label>
+                            <div class="input-group">
+                                <select class="form-select" id="chaos_experiments_count" name="chaos_experiments_count">
+                                    {% for i in range(0,21) %}
+                                    <option value="{{ i }}">{{ i }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="button" class="btn btn-outline-primary" id="generateChaosBtn" title="Generate experiment fields">Generate</button>
+                            </div>
+                            <small class="text-muted">Select a number then click Generate to add experiment details.</small>
+                        </div>
+                        <div id="chaosExperimentsContainer" class="d-none"></div>
+                    </div>
+                </div>
+            </div>
+
             <div class="mb-3 fade-in" style="--delay: 1.4s">
                 <label for="report_folder" class="form-label">JMeter Report Folder (ZIP) <span class="text-danger">*</span></label>
                 <input class="form-control" type="file" id="report_folder" name="report_folder" required>
@@ -285,10 +312,23 @@ Examples:
     .card-header.text-danger {
         color: #dc3545;
     }
+
+    .chaos-exp-card {
+        border: 1px solid #e9ecef;
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+        background: #fafafa;
+    }
+
+    .chaos-exp-card h5 {
+        font-size: 1rem;
+        margin-bottom: 10px;
+    }
 </style>
 {% endblock %}
 
-{% block scripts %}
+{% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -296,87 +336,82 @@ Examples:
         const kibanaAnalysisCheckbox = document.getElementById('use_kibana_analysis');
         const apmServiceNameField = document.getElementById('APM_service_name');
         const apmRequiredLabel = document.getElementById('apm_required');
-        
+        // Chaos experiments generation handled in global scripts.js now
+        // Removed previous change listener logic
         // Handle the conditional required state for APM service name
-        kibanaAnalysisCheckbox.addEventListener('change', function() {
-            if (this.checked) {
-                apmServiceNameField.setAttribute('required', '');
-                apmRequiredLabel.classList.remove('d-none');
-            } else {
-                apmServiceNameField.removeAttribute('required');
-                apmRequiredLabel.classList.add('d-none');
-            }
-        });
-        
+        if(kibanaAnalysisCheckbox){
+            kibanaAnalysisCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    apmServiceNameField.setAttribute('required', '');
+                    apmRequiredLabel.classList.remove('d-none');
+                } else {
+                    apmServiceNameField.removeAttribute('required');
+                    apmRequiredLabel.classList.add('d-none');
+                }
+            });
+        }
         form.addEventListener('submit', function(e) {
             e.preventDefault();
-            
-            // Reset previous validation states
             document.querySelectorAll('.invalid-field').forEach(el => el.classList.remove('invalid-field'));
             document.querySelectorAll('.has-error').forEach(el => el.classList.remove('has-error'));
-            
-            let isValid = true;
-            let firstErrorSection = null;
-            
-            // Validate all required fields
+            let isValid = true; let firstErrorSection = null;
             document.querySelectorAll('[required]').forEach(field => {
                 if (!field.value.trim()) {
-                    isValid = false;
-                    field.classList.add('invalid-field');
-                    
-                    // Find and expand the parent collapse section
+                    isValid = false; field.classList.add('invalid-field');
                     const collapseSection = field.closest('.collapse');
                     if (collapseSection) {
-                        // Store first error section for scrolling
-                        if (!firstErrorSection) {
-                            firstErrorSection = collapseSection;
-                        }
-                        
-                        // Mark the header as having an error
-                        const header = collapseSection.previousElementSibling;
-                        if (header) {
-                            header.classList.add('has-error');
-                        }
-                        
-                        // Expand the section
+                        if (!firstErrorSection) firstErrorSection = collapseSection;
+                        const header = collapseSection.previousElementSibling; if (header) header.classList.add('has-error');
                         bootstrap.Collapse.getOrCreateInstance(collapseSection).show();
                     }
                 }
             });
-
             const validationMessage = document.getElementById('validationMessage');
-            
             if (!isValid) {
                 validationMessage.classList.remove('d-none');
-                if (firstErrorSection) {
-                    setTimeout(() => {
-                        firstErrorSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }, 200);
-                }
+                if (firstErrorSection) setTimeout(()=>firstErrorSection.scrollIntoView({behavior:'smooth', block:'start'}),200);
             } else {
                 validationMessage.classList.add('d-none');
                 form.submit();
             }
         });
-
-        // Clear validation styling on input
         document.querySelectorAll('[required]').forEach(field => {
             field.addEventListener('input', function() {
                 this.classList.remove('invalid-field');
-                
-                // Check if all fields in section are valid
                 const section = this.closest('.collapse');
                 if (section) {
-                    const allSectionFieldsValid = [...section.querySelectorAll('[required]')]
-                        .every(f => f.value.trim());
-                    
-                    const header = section.previousElementSibling;
-                    if (header && allSectionFieldsValid) {
-                        header.classList.remove('has-error');
-                    }
+                    const allValid = [...section.querySelectorAll('[required]')].every(f=>f.value.trim());
+                    const header = section.previousElementSibling; if (header && allValid) header.classList.remove('has-error');
                 }
             });
         });
     });
+    document.addEventListener('DOMContentLoaded', function() {
+        // Fallback (in case global scripts.js failed before attaching listener)
+        const select = document.getElementById('chaos_experiments_count');
+        const container = document.getElementById('chaosExperimentsContainer');
+        const btn = document.getElementById('generateChaosBtn');
+        function buildExperiment(i){
+            return `\n<div class=\"chaos-exp-card\">\n  <h5>Experiment #${i}</h5>\n  <div class=\"mb-3\">\n    <label class=\"form-label\" for=\"chaos_experiment_${i}_title\">Title <span class=\"text-danger\">*</span></label>\n    <input type=\"text\" class=\"form-control\" id=\"chaos_experiment_${i}_title\" name=\"chaos_experiment_${i}_title\" required />\n  </div>\n  <div class=\"mb-3\">\n    <label class=\"form-label\" for=\"chaos_experiment_${i}_status\">Status <span class=\"text-danger\">*</span></label>\n    <select class=\"form-select\" id=\"chaos_experiment_${i}_status\" name=\"chaos_experiment_${i}_status\" required>\n      <option value=\"\">Select...</option>\n      <option value=\"Passed\">Passed</option>\n      <option value=\"Partially Passed\">Partially Passed</option>\n      <option value=\"Failed\">Failed</option>\n    </select>\n  </div>\n  <div class=\"mb-3\">\n    <label class=\"form-label\" for=\"chaos_experiment_${i}_description\">Description <span class=\"text-danger\">*</span></label>\n    <textarea class=\"form-control\" rows=\"4\" id=\"chaos_experiment_${i}_description\" name=\"chaos_experiment_${i}_description\" required></textarea>\n  </div>\n</div>`;
+        }
+        function renderChaos(){
+            if(!select || !container) return;
+            const count = parseInt(select.value||'0',10);
+            container.innerHTML='';
+            if(count>0){
+                container.classList.remove('d-none');
+                for(let i=1;i<=count;i++) container.insertAdjacentHTML('beforeend', buildExperiment(i));
+                const collapseEl = document.getElementById('chaosExperimentsWrapper');
+                if(collapseEl){ bootstrap.Collapse.getOrCreateInstance(collapseEl,{toggle:false}).show(); }
+            } else {
+                container.classList.add('d-none');
+            }
+        }
+        if(btn && !btn.dataset.listenerAttached){
+            btn.addEventListener('click', renderChaos);
+            btn.dataset.listenerAttached = '1';
+        }
+    });
 </script>
 {% endblock %}
+``` 

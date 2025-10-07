@@ -73,6 +73,81 @@ def generate_jmeter_report(folder_path, form_data):
         raise
 
 
+def build_chaos_experiments_html(form_data):
+    """Build HTML section for Chaos Experiments if provided.
+    Looks for keys chaos_experiment_{i}_title/status/description based on chaos_experiments_count.
+    """
+    try:
+        count_raw = form_data.get('chaos_experiments_count')
+        if count_raw is None:
+            return ''
+        try:
+            count = int(count_raw)
+        except ValueError:
+            return ''
+        if count <= 0:
+            return ''
+        experiments = []
+        for i in range(1, count + 1):
+            title = form_data.get(f'chaos_experiment_{i}_title', '').strip()
+            status = form_data.get(f'chaos_experiment_{i}_status', '').strip()
+            desc = form_data.get(f'chaos_experiment_{i}_description', '').strip()
+            # Only include if all mandatory fields exist
+            if title and status and desc:
+                # Basic escaping for HTML injection (very light; assuming trusted internal usage)
+                safe_title = re.sub(r'[<>]', '', title)
+                safe_status = re.sub(r'[<>]', '', status)
+                safe_desc = re.sub(r'[<>]', '', desc).replace('\n', '<br>')
+                experiments.append({
+                    'index': i,
+                    'title': safe_title,
+                    'status': safe_status,
+                    'description': safe_desc
+                })
+        if not experiments:
+            return ''
+        # Map status to badge color
+        status_color = {
+            'Passed': '#198754',
+            'Partially Passed': '#ffc107',
+            'Failed': '#dc3545'
+        }
+        section_parts = [
+            '<br><br><p class="dashboard-title">Chaos Experiments</p>',
+        ]
+        for exp in experiments:
+            color = status_color.get(exp['status'], '#0d6efd')
+            table_html = f"""
+            <table class='table table-bordered table-condensed' style='margin-bottom:25px;'>
+                <thead>
+                    <tr style='background:#f8f9fa;'>
+                        <th colspan='2'>Experiment #{exp['index']}: {exp['title']} <span style='float:right;' class='badge' 
+                            style='background:{color};color:#fff'>{exp['status']}</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style='width:180px;'>Title</td>
+                        <td>{exp['title']}</td>
+                    </tr>
+                    <tr>
+                        <td>Status</td>
+                        <td><span style='display:inline-block;padding:4px 10px;border-radius:12px;background:{color};color:#fff;font-size:0.85rem;'>{exp['status']}</span></td>
+                    </tr>
+                    <tr>
+                        <td>Description</td>
+                        <td>{exp['description']}</td>
+                    </tr>
+                </tbody>
+            </table>
+            """
+            section_parts.append(table_html)
+        return ''.join(section_parts)
+    except Exception as e:
+        logging.error(f"Error building chaos experiments HTML: {e}")
+        return ''
+
+
 def edit_html_and_js(html_path, js_path, stats_path, form_data):
     """Edit the HTML and JS files with the provided form data"""
     try:
@@ -349,6 +424,15 @@ def edit_html_and_js(html_path, js_path, stats_path, form_data):
         
         # Make sure closing image is always added ONCE, at the very end of the process
         if "</body>" in modified_html:
+            # Insert Chaos Experiments just BEFORE the final Thank You image insertion
+            chaos_html = build_chaos_experiments_html(form_data)
+            if chaos_html:
+                body_pos = modified_html.find("</body>")
+                if body_pos != -1:
+                    before = modified_html[:body_pos]
+                    after = modified_html[body_pos:]
+                    # Ensure placement after AI Analysis sections (already appended earlier) but before Thank You image
+                    modified_html = before + chaos_html + after
             modified_html = modified_html.replace(
                 "</body>",
                 "<img src=\"https://i.ibb.co/8L9RQ6pB/Thanks.png\" alt=\"Cover Image\" style=\"width: 100%; height: 100vh; object-fit: cover; break-after: page; display: none;\" onload=\"this.style.display='none'; window.matchMedia('print').addListener(mql => mql.matches &amp;&amp; (this.style.display='block')); window.onafterprint = () => this.style.display='none';\"></body>"

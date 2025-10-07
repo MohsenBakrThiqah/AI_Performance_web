@@ -98,8 +98,20 @@ def create_app(config_class=Config):
                     'findings_text': request.form.get('findings_text'),
                     'use_gpt': request.form.get('use_gpt') == 'on',
                     'use_kibana_analysis': request.form.get('use_kibana_analysis') == 'on',
-                    'APM_service_name': request.form.get('APM_service_name')
+                    'APM_service_name': request.form.get('APM_service_name'),
+                    'chaos_experiments_count': request.form.get('chaos_experiments_count')
                 }
+
+                # Collect dynamic chaos experiment fields based on count
+                try:
+                    chaos_count = int(form_data.get('chaos_experiments_count') or 0)
+                except ValueError:
+                    chaos_count = 0
+                if chaos_count > 0:
+                    for i in range(1, chaos_count + 1):
+                        form_data[f'chaos_experiment_{i}_title'] = request.form.get(f'chaos_experiment_{i}_title')
+                        form_data[f'chaos_experiment_{i}_status'] = request.form.get(f'chaos_experiment_{i}_status')
+                        form_data[f'chaos_experiment_{i}_description'] = request.form.get(f'chaos_experiment_{i}_description')
 
                 if 'report_folder' not in request.files:
                     flash('No report folder selected', 'error')
