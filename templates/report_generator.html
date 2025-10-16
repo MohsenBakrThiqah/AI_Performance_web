@@ -127,7 +127,7 @@
             <div class="row">
                 <div class="col-md-6">
                     <div class="card mb-3 fade-in" style="--delay: 0.8s">
-                        <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#azureDetails">
+                        <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#azureDetails" aria-expanded="false" aria-controls="azureDetails">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span>Azure Details</span>
                                 <i class="bi bi-chevron-down"></i>
@@ -154,7 +154,7 @@
 
                 <div class="col-md-6">
                     <div class="card mb-3 fade-in" style="--delay: 1s">
-                        <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#testScope">
+                        <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#testScope" aria-expanded="false" aria-controls="testScope">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span>Test Scope</span>
                                 <i class="bi bi-chevron-down"></i>
@@ -172,7 +172,7 @@
             </div>
 
             <div class="card mb-3 fade-in" style="--delay: 1.2s">
-                <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#findings">
+                <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#findings" aria-expanded="false" aria-controls="findings">
                     <div class="d-flex justify-content-between align-items-center">
                         <span>Findings</span>
                         <i class="bi bi-chevron-down"></i>
@@ -206,7 +206,7 @@ Examples:
 
             <!-- Chaos Experiments Section -->
             <div class="card mb-3 fade-in" style="--delay: 1.25s">
-                <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#chaosExperimentsWrapper">
+                <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#chaosExperimentsWrapper" aria-expanded="false" aria-controls="chaosExperimentsWrapper">
                     <div class="d-flex justify-content-between align-items-center">
                         <span>Chaos Experiments</span>
                         <i class="bi bi-chevron-down"></i>
@@ -250,7 +250,7 @@ Examples:
                 Please fill in all mandatory fields marked with <span class="text-danger">*</span>
             </div>
 
-            <button type="submit" class="btn btn-primary fade-in" style="--delay: 1.8s">Generate Report</button>
+            <button type="submit" id="generateReportBtn" class="btn btn-primary fade-in" style="--delay: 1.8s">Generate Report</button>
         </form>
     </div>
 </div>
@@ -288,7 +288,7 @@ Examples:
         transition: transform 0.3s;
     }
 
-    .collapse.show + .card-body .bi-chevron-down {
+    .card-header[aria-expanded="true"] .bi-chevron-down {
         transform: rotate(180deg);
     }
 
@@ -336,9 +336,58 @@ Examples:
         const kibanaAnalysisCheckbox = document.getElementById('use_kibana_analysis');
         const apmServiceNameField = document.getElementById('APM_service_name');
         const apmRequiredLabel = document.getElementById('apm_required');
-        // Chaos experiments generation handled in global scripts.js now
-        // Removed previous change listener logic
-        // Handle the conditional required state for APM service name
+        const submitBtn = document.getElementById('generateReportBtn');
+
+        // Ensure collapse headers have proper accessibility attributes
+        document.querySelectorAll('.card-header[role="button"][data-bs-toggle="collapse"]').forEach(h => {
+            const target = h.getAttribute('data-bs-target');
+            if (target) {
+                h.setAttribute('aria-controls', target.replace('#',''));
+                if (!h.hasAttribute('aria-expanded')) h.setAttribute('aria-expanded','false');
+            }
+        });
+
+        // Spinner / loading state helpers
+        function setLoading(loading){
+            if(!submitBtn) return;
+            if(loading){
+                if(!submitBtn.dataset.originalHtml) submitBtn.dataset.originalHtml = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+            } else {
+                submitBtn.disabled = false;
+                if(submitBtn.dataset.originalHtml) submitBtn.innerHTML = submitBtn.dataset.originalHtml;
+            }
+        }
+
+        async function submitFormAjax(){
+            setLoading(true);
+            try {
+                const fd = new FormData(form);
+                const resp = await fetch(form.action, { method: 'POST', body: fd });
+                if(!resp.ok) throw new Error('Server responded ' + resp.status);
+                const disposition = resp.headers.get('Content-Disposition') || '';
+                let filename = 'report.zip';
+                const match = disposition.match(/filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/);
+                if(match) filename = decodeURIComponent(match[1] || match[2]);
+                const blob = await resp.blob();
+                // Basic content-type guard: if HTML returned, likely an error page
+                if(blob.type.includes('text/html')){
+                    const text = await blob.text();
+                    throw new Error('Unexpected HTML response.\n' + text.slice(0,400));
+                }
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+                setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 2000);
+            } catch(err){
+                alert('Failed to generate report: ' + err.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // Conditional required for APM service name
         if(kibanaAnalysisCheckbox){
             kibanaAnalysisCheckbox.addEventListener('change', function() {
                 if (this.checked) {
@@ -350,12 +399,13 @@ Examples:
                 }
             });
         }
+
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             document.querySelectorAll('.invalid-field').forEach(el => el.classList.remove('invalid-field'));
             document.querySelectorAll('.has-error').forEach(el => el.classList.remove('has-error'));
             let isValid = true; let firstErrorSection = null;
-            document.querySelectorAll('[required]').forEach(field => {
+            form.querySelectorAll('[required]').forEach(field => {
                 if (!field.value.trim()) {
                     isValid = false; field.classList.add('invalid-field');
                     const collapseSection = field.closest('.collapse');
@@ -372,10 +422,11 @@ Examples:
                 if (firstErrorSection) setTimeout(()=>firstErrorSection.scrollIntoView({behavior:'smooth', block:'start'}),200);
             } else {
                 validationMessage.classList.add('d-none');
-                form.submit();
+                submitFormAjax(); // AJAX submission with proper reset
             }
         });
-        document.querySelectorAll('[required]').forEach(field => {
+
+        form.querySelectorAll('[required]').forEach(field => {
             field.addEventListener('input', function() {
                 this.classList.remove('invalid-field');
                 const section = this.closest('.collapse');
@@ -385,14 +436,27 @@ Examples:
                 }
             });
         });
+
+        // Collapse icon rotation sync (in case programmatic show used)
+        document.querySelectorAll('.collapse').forEach(c => {
+            c.addEventListener('show.bs.collapse', function(){
+                const header = c.previousElementSibling;
+                if(header) header.setAttribute('aria-expanded','true');
+            });
+            c.addEventListener('hide.bs.collapse', function(){
+                const header = c.previousElementSibling;
+                if(header) header.setAttribute('aria-expanded','false');
+            });
+        });
     });
+
     document.addEventListener('DOMContentLoaded', function() {
-        // Fallback (in case global scripts.js failed before attaching listener)
+        // Fallback (in case global scripts.js failed before attaching listener) for chaos experiments
         const select = document.getElementById('chaos_experiments_count');
         const container = document.getElementById('chaosExperimentsContainer');
         const btn = document.getElementById('generateChaosBtn');
         function buildExperiment(i){
-            return `\n<div class=\"chaos-exp-card\">\n  <h5>Experiment #${i}</h5>\n  <div class=\"mb-3\">\n    <label class=\"form-label\" for=\"chaos_experiment_${i}_title\">Title <span class=\"text-danger\">*</span></label>\n    <input type=\"text\" class=\"form-control\" id=\"chaos_experiment_${i}_title\" name=\"chaos_experiment_${i}_title\" required />\n  </div>\n  <div class=\"mb-3\">\n    <label class=\"form-label\" for=\"chaos_experiment_${i}_status\">Status <span class=\"text-danger\">*</span></label>\n    <select class=\"form-select\" id=\"chaos_experiment_${i}_status\" name=\"chaos_experiment_${i}_status\" required>\n      <option value=\"\">Select...</option>\n      <option value=\"Passed\">Passed</option>\n      <option value=\"Partially Passed\">Partially Passed</option>\n      <option value=\"Failed\">Failed</option>\n    </select>\n  </div>\n  <div class=\"mb-3\">\n    <label class=\"form-label\" for=\"chaos_experiment_${i}_description\">Description <span class=\"text-danger\">*</span></label>\n    <textarea class=\"form-control\" rows=\"4\" id=\"chaos_experiment_${i}_description\" name=\"chaos_experiment_${i}_description\" required></textarea>\n  </div>\n</div>`;
+            return `\n<div class="chaos-exp-card">\n  <h5>Experiment #${i}</h5>\n  <div class="mb-3">\n    <label class="form-label" for="chaos_experiment_${i}_title">Title <span class="text-danger">*</span></label>\n    <input type="text" class="form-control" id="chaos_experiment_${i}_title" name="chaos_experiment_${i}_title" required />\n  </div>\n  <div class="mb-3">\n    <label class="form-label" for="chaos_experiment_${i}_status">Status <span class="text-danger">*</span></label>\n    <select class="form-select" id="chaos_experiment_${i}_status" name="chaos_experiment_${i}_status" required>\n      <option value="">Select...</option>\n      <option value="Passed">Passed</option>\n      <option value="Partially Passed">Partially Passed</option>\n      <option value="Failed">Failed</option>\n    </select>\n  </div>\n  <div class="mb-3">\n    <label class="form-label" for="chaos_experiment_${i}_description">Description <span class="text-danger">*</span></label>\n    <textarea class="form-control" rows="4" id="chaos_experiment_${i}_description" name="chaos_experiment_${i}_description" required></textarea>\n  </div>\n</div>`;
         }
         function renderChaos(){
             if(!select || !container) return;
@@ -414,4 +478,3 @@ Examples:
     });
 </script>
 {% endblock %}
-``` 
