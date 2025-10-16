@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>End‑to‑End Architecture Flow</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+:root {
+  --bg: #0e1116;
+  --panel: #1c2330;
+  --panel-alt:#242f3f;
+  --accent: #3d8bfd;
+  --accent-grad: linear-gradient(135deg,#3d8bfd,#5f5fff 60%,#8a5fff);
+  --border: #2e3c52;
+  --text: #e6edf3;
+  --muted: #94a3b8;
+  --danger: #ff4d5d;
+  --warn: #e0a821;
+  --ok: #30c48d;
+  font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,'Noto Sans',sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin:0; padding:clamp(12px,2vw,32px);
+  background: radial-gradient(circle at 70% 20%,#17202b 0,#0e1116 60%);
+  color:var(--text);
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Animated Technology Background */
+.tech-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.tech-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    linear-gradient(rgba(61, 139, 253, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(61, 139, 253, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: gridMove 20s linear infinite;
+}
+
+@keyframes gridMove {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(50px, 50px); }
+}
+
+.particle {
+  position: absolute;
+  background: var(--accent);
+  border-radius: 50%;
+  opacity: 0;
+  animation: particleFloat linear infinite;
+  box-shadow: 0 0 10px rgba(61, 139, 253, 0.5);
+}
+
+@keyframes particleFloat {
+  0% {
+    opacity: 0;
+    transform: translateY(100vh) scale(0);
+  }
+  10% {
+    opacity: 0.6;
+  }
+  90% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100vh) scale(1);
+  }
+}
+
+.circuit-line {
+  position: absolute;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(61, 139, 253, 0.4), transparent);
+  animation: circuitMove linear infinite;
+}
+
+@keyframes circuitMove {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  90% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateX(100vw);
+    opacity: 0;
+  }
+}
+
+.glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.15;
+  animation: orbFloat ease-in-out infinite;
+}
+
+@keyframes orbFloat {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(30px, -30px) scale(1.1);
+  }
+}
+header {text-align:center; margin-bottom:1.5rem;}
+header h1 {font-size:clamp(1.4rem,2.4vw,2.4rem); margin:.25rem 0; font-weight:600; letter-spacing:.5px;}
+header p {margin:0; color:var(--muted); font-size:.9rem;}
+
+.flow-wrapper {max-width:1400px; margin:0 auto;}
+svg {width:100%; height:auto; overflow:visible;}
+
+.node-group {filter: drop-shadow(0 4px 10px rgba(0,0,0,.4)); cursor:pointer; transition:transform .4s cubic-bezier(.4,.2,.1,1); opacity:0;} 
+.node-group:focus-within, .node-group:focus, .node-group:hover {transform:translateY(-4px);}
+
+/* Animation classes - added when element is in view */
+.node-group.animate {animation: slideInFromLeft 1.2s cubic-bezier(.4,.2,.1,1) forwards;}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Staggered animation delays for flow elements */
+.node-group:nth-of-type(1).animate { animation-delay: 0s; }
+.node-group:nth-of-type(2).animate { animation-delay: 0.4s; }
+.node-group:nth-of-type(3).animate { animation-delay: 0.8s; }
+.node-group:nth-of-type(4).animate { animation-delay: 1.2s; } 
+
+.node rect, .node path.round, .cluster rect {stroke:var(--border); stroke-width:1.2; fill:var(--panel); rx:14; ry:14;}
+.cluster rect {fill:var(--panel-alt); stroke-dasharray:4 4;}
+.node.frontend rect {fill:#17324f;}
+.node.backend rect {fill:#2d1f4a;}
+.node.db rect {fill:#1f3a20;}
+.node.firewall rect {fill:#3a1e1e;}
+.node.firewall rect:nth-child(2) {fill:#402525;}
+
+.node rect.gradient {fill:var(--accent-grad); stroke:#4c5d74;}
+
+.node text {font-size:.72rem; font-weight:500; letter-spacing:.5px; text-transform:uppercase; fill:var(--text); pointer-events:none;}
+.node .subtitle {font-size:.55rem; fill:var(--muted); font-weight:400; letter-spacing:.3px;}
+
+.arrow {fill:none; stroke:var(--accent); stroke-width:2.2; stroke-linecap:round; marker-end:url(#arrowHead); filter: drop-shadow(0 0 4px rgba(61,139,253,.55)); opacity:0; stroke-dasharray:4 14;}
+.arrow.animate {animation: fadeInArrow 1s ease-out forwards, dash 3.8s linear infinite;}
+
+@keyframes fadeInArrow {
+  from {
+    opacity: 0;
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+  }
+  to {
+    opacity: 1;
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes dash {to {stroke-dashoffset:-260;}}
+
+.pulse-dot {fill:var(--accent); filter: drop-shadow(0 0 6px rgba(61,139,253,.8)); animation:pulse 2.4s ease-in-out infinite;}
+@keyframes pulse {0%,100%{r:4; opacity:.25;}50%{r:7; opacity:1;}}
+
+.legend {display:flex; flex-wrap:wrap; gap:.65rem; margin-top:1.25rem; font-size:.65rem; letter-spacing:.5px; text-transform:uppercase; opacity:0;}
+.legend.animate {animation: fadeIn 1s ease-out forwards;}
+.legend span {display:inline-flex; align-items:center; gap:.4rem; background:var(--panel-alt); padding:.4rem .65rem; border:1px solid var(--border); border-radius:999px;}
+.legend i {width:16px; height:10px; border-radius:4px; display:inline-block;}
+.legend .core {background:var(--accent-grad);} .legend .fw {background:#3a1e1e;} .legend .f5 {background:#2b2f55;} .legend .ing {background:#24364a;} .legend .front {background:#17324f;} .legend .back {background:#2d1f4a;} .legend .db {background:#1f3a20;}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Title animations */
+h1, h2, h3, h4 {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+h1.animate, h2.animate, h3.animate, h4.animate {
+  animation: fadeInUp 1s ease-out forwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Chat example box animations */
+.chat-example {
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+.chat-example.animate {
+  animation: slideInUp 1.2s cubic-bezier(.4,.2,.1,1) forwards;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.info-panel {position:fixed; inset:auto 1rem 1rem auto; width:310px; max-width:calc(100% - 2rem); background:rgba(20,26,34,.88); backdrop-filter:blur(16px) saturate(160%); border:1px solid #263346; padding:1rem 1.1rem .9rem; border-radius:18px; display:flex; flex-direction:column; gap:.65rem; font-size:.8rem; line-height:1.3; box-shadow:0 6px 25px -4px rgba(0,0,0,.6);}
+.info-panel h2 {margin:0 0 .25rem; font-size:.9rem; font-weight:600; letter-spacing:.6px;}
+.info-panel button {all:unset; cursor:pointer; color:var(--accent); font-size:.7rem; letter-spacing:.5px; align-self:flex-end;}
+.info-panel.hidden {opacity:0; transform:translateY(12px); pointer-events:none; transition:all .4s;} 
+.info-panel:not(.hidden){animation:panelIn .6s cubic-bezier(.4,.8,.2,1);} @keyframes panelIn {from {opacity:0; transform:translateY(12px);} to {opacity:1; transform:translateY(0);} }
+.panel-badge {display:inline-block; padding:2px 6px; font-size:.55rem; background:#2d3b4d; border-radius:6px; margin-right:4px; letter-spacing:.5px;}
+
+footer {text-align:center; margin-top:2.5rem; font-size:.65rem; color:var(--muted);} 
+
+@media (max-width:930px){
+  svg {min-height:880px;} /* allow vertical stacking on narrow displays */
+}
+</style>
+</head>
+<body>
+<!-- Animated Technology Background -->
+<div class="tech-background">
+  <div class="tech-grid"></div>
+  <!-- Glow Orbs -->
+  <div class="glow-orb" style="width: 300px; height: 300px; background: #3d8bfd; top: 10%; left: 5%; animation-duration: 8s;"></div>
+  <div class="glow-orb" style="width: 250px; height: 250px; background: #5f5fff; top: 60%; right: 10%; animation-duration: 10s; animation-delay: 2s;"></div>
+  <div class="glow-orb" style="width: 200px; height: 200px; background: #8a5fff; bottom: 15%; left: 40%; animation-duration: 12s; animation-delay: 4s;"></div>
+</div>
+
+<header>
+  <h1 style="font-size:clamp(2rem,4vw,3.5rem); background:linear-gradient(135deg,#3d8bfd,#5f5fff 60%,#8a5fff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:0.5rem; letter-spacing:2px;">DUALMIND AI</h1>
+  <p style="font-size:1rem; margin-bottom:3rem; color:#94a3b8;">Intelligent AI Performance Testing Analyst tailored for both Tech & Business approaches</p>
+  
+  <h2 style="font-size:clamp(1.4rem,2.4vw,2rem); margin-top:2rem; margin-bottom:0.25rem; font-weight:600; letter-spacing:.5px;">Technical AI Performance Assistant</h2>
+  <p style="margin:0; color:var(--muted); font-size:.9rem;">LangChain-powered workflow for analyzing system performance via n8n fro technical users</p>
+</header>
+<div class="flow-wrapper">
+  <svg viewBox="0 0 1600 700" role="img" aria-label="AI Performance Testing Analyst workflow diagram">
+    <defs>
+      <linearGradient id="coreGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#3d8bfd" />
+        <stop offset="60%" stop-color="#5f5fff" />
+        <stop offset="100%" stop-color="#8a5fff" />
+      </linearGradient>
+      <marker id="arrowHead" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="var(--accent)" />
+      </marker>
+      <filter id="glow">
+        <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+        <feMerge>
+          <feMergeNode in="coloredBlur" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+      
+      <!-- Icon Definitions -->
+      <!-- Chat Icon -->
+      <g id="chatIcon">
+        <rect x="2" y="4" width="20" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M8 10 L12 14 L12 10" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        <path d="M6 8 h12 M6 12 h8" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+      </g>
+      
+      <!-- AI Brain Icon -->
+      <g id="aiIcon">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M8 10 L10 12 L8 14 M16 10 L14 12 L16 14" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        <circle cx="12" cy="12" r="2" fill="currentColor" opacity="0.5"/>
+        <path d="M12 3 v3 M12 18 v3 M3 12 h3 M18 12 h3" stroke="currentColor" stroke-width="1.2" opacity="0.4"/>
+      </g>
+      
+      <!-- OpenAI Icon -->
+      <g id="openaiIcon">
+        <path d="M12 2 L22 8 L22 16 L12 22 L2 16 L2 8 Z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+        <circle cx="12" cy="12" r="2" fill="currentColor"/>
+      </g>
+      
+      <!-- Memory Icon -->
+      <g id="memoryIcon">
+        <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M8 10 h8 M8 14 h6" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+        <circle cx="6" cy="10" r="1" fill="#30c48d"/>
+      </g>
+      
+      <!-- HTTP Icon -->
+      <g id="httpIcon">
+        <rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M7 9 v6 M7 12 h3 M10 9 v6 M13 9 v6 M13 9 h3 M16 9 v6" stroke="currentColor" stroke-width="1.2"/>
+      </g>
+      
+      <!-- Elasticsearch Icon -->
+      <g id="elasticIcon">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M6 12 h12 M12 6 v12" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M8 8 L16 16 M16 8 L8 16" stroke="currentColor" stroke-width="1.2" opacity="0.5"/>
+      </g>
+      
+      <!-- MCP Icon -->
+      <g id="mcpIcon">
+        <rect x="4" y="4" width="16" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M9 8 L12 11 L15 8 M9 13 h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </g>
+      
+      <!-- Database Icon -->
+      <g id="databaseIcon">
+        <ellipse cx="12" cy="6" rx="8" ry="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M4 6 v10 q0 3 8 3 t8 -3 v-10" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <ellipse cx="12" cy="11" rx="8" ry="3" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.5"/>
+      </g>
+    </defs>
+
+    <!-- 1. Chat Trigger -->
+    <g class="node-group" tabindex="0" data-role="Chat Trigger" data-desc="Public webhook/chat entrypoint. Receives user prompts like 'Analyze yesterday's checkout service performance' and initiates the workflow.">
+      <g class="node" transform="translate(60,280)">
+        <rect class="gradient" width="180" height="90" rx="18" />
+        <use href="#chatIcon" x="18" y="28" width="24" height="24" color="#fff" opacity="0.9"/>
+        <text x="100" y="42" text-anchor="middle">Chat Message</text>
+        <text x="100" y="60" text-anchor="middle" class="subtitle">Webhook Trigger</text>
+      </g>
+    </g>
+
+    <!-- 2. AI Agent Core -->
+    <g class="node-group" tabindex="0" data-role="AI Agent" data-desc="LangChain Agent orchestrator. The brain of the workflow - reasons, calls tools, enforces KPIs. Runs up to 100 iterations with 3 retries. Acts as performance testing analyst AI.">
+      <g class="cluster" transform="translate(310,100)">
+        <rect width="480" height="400" rx="28" />
+        <text x="240" y="26" text-anchor="middle" style="font-size:.62rem; letter-spacing:1px; fill:var(--muted);">AI AGENT ORCHESTRATOR</text>
+        
+        <!-- Central Agent -->
+        <g class="node" transform="translate(150,60)">
+          <rect width="180" height="100" rx="18" fill="#2d1f4a" />
+          <use href="#aiIcon" x="18" y="32" width="24" height="24" color="#fff" opacity="0.9"/>
+          <text x="100" y="48" text-anchor="middle">AI Agent</text>
+          <text x="100" y="66" text-anchor="middle" class="subtitle">LangChain</text>
+          <text x="100" y="82" text-anchor="middle" class="subtitle" style="font-size:.48rem;">max 100 iterations</text>
+        </g>
+
+        <!-- Model & Memory Components -->
+        <g class="node" transform="translate(30,200)">
+          <rect width="150" height="75" rx="16" fill="#17324f" />
+          <use href="#openaiIcon" x="12" y="22" width="24" height="24" color="#fff" opacity="0.85"/>
+          <text x="82" y="38" text-anchor="middle">OpenAI</text>
+          <text x="82" y="54" text-anchor="middle" class="subtitle">Chat Model</text>
+          <text x="82" y="66" text-anchor="middle" class="subtitle" style="font-size:.48rem;">gpt-5</text>
+        </g>
+
+        <g class="node" transform="translate(300,200)">
+          <rect width="150" height="75" rx="16" fill="#1f3a20" />
+          <use href="#memoryIcon" x="12" y="22" width="24" height="24" color="#fff" opacity="0.85"/>
+          <text x="82" y="38" text-anchor="middle">Memory</text>
+          <text x="82" y="54" text-anchor="middle" class="subtitle">Buffer Window</text>
+          <text x="82" y="66" text-anchor="middle" class="subtitle" style="font-size:.48rem;">Context retention</text>
+        </g>
+
+        <!-- Connections to Agent -->
+        <path class="arrow flow" d="M105 200 L210 160" style="animation-delay: 1.2s;" />
+        <path class="arrow flow" d="M375 200 L290 160" style="animation-delay: 1.4s;" />
+      </g>
+    </g>
+
+    <!-- 3. Tools Cluster -->
+    <g class="node-group" tabindex="0" data-role="Analysis Tools" data-desc="Collection of tools the Agent calls on-demand: APM traces query, generic Elasticsearch access, and MCP client for JTL_report database access.">
+      <g class="cluster" transform="translate(860,100)">
+        <rect width="680" height="400" rx="28" />
+        <text x="340" y="26" text-anchor="middle" style="font-size:.62rem; letter-spacing:1px; fill:var(--muted);">ANALYSIS TOOLS</text>
+
+        <!-- HTTP Request to APM -->
+        <g class="node" transform="translate(30,60)">
+          <rect width="190" height="100" rx="18" fill="#2b2f55" />
+          <use href="#httpIcon" x="18" y="32" width="24" height="24" color="#fff" opacity="0.9"/>
+          <text x="105" y="48" text-anchor="middle">HTTP Request</text>
+          <text x="105" y="66" text-anchor="middle" class="subtitle">APM Traces</text>
+          <text x="105" y="82" text-anchor="middle" class="subtitle" style="font-size:.48rem;">elkpp.thiqah.sa</text>
+        </g>
+
+        <!-- Elasticsearch Tool -->
+        <g class="node" transform="translate(260,60)">
+          <rect width="170" height="100" rx="18" fill="#24364a" />
+          <use href="#elasticIcon" x="14" y="32" width="24" height="24" color="#fff" opacity="0.9"/>
+          <text x="95" y="48" text-anchor="middle">Elasticsearch</text>
+          <text x="95" y="66" text-anchor="middle" class="subtitle">Generic Tool</text>
+          <text x="95" y="82" text-anchor="middle" class="subtitle" style="font-size:.48rem;">Custom queries</text>
+        </g>
+
+        <!-- MCP Client -->
+        <g class="node" transform="translate(470,60)">
+          <rect width="180" height="100" rx="18" fill="#3a1e1e" />
+          <use href="#mcpIcon" x="18" y="32" width="24" height="24" color="#fff" opacity="0.9"/>
+          <text x="100" y="48" text-anchor="middle">MCP Client</text>
+          <text x="100" y="66" text-anchor="middle" class="subtitle">JTL_report DB</text>
+          <text x="100" y="82" text-anchor="middle" class="subtitle" style="font-size:.48rem;">172.17.0.3:8000</text>
+        </g>
+
+        <!-- Data Sources Below -->
+        <g class="node db" transform="translate(30,230)">
+          <rect width="170" height="80" rx="16" />
+          <use href="#databaseIcon" x="14" y="24" width="24" height="24" color="#fff" opacity="0.8"/>
+          <text x="95" y="42" text-anchor="middle">Elasticsearch</text>
+          <text x="95" y="58" text-anchor="middle" class="subtitle">APM Index</text>
+          <text x="95" y="72" text-anchor="middle" class="subtitle" style="font-size:.48rem;">traces-apm-default</text>
+        </g>
+
+        <g class="node db" transform="translate(250,230)">
+          <rect width="170" height="80" rx="16" />
+          <use href="#databaseIcon" x="14" y="24" width="24" height="24" color="#fff" opacity="0.8"/>
+          <text x="95" y="42" text-anchor="middle">Elasticsearch</text>
+          <text x="95" y="58" text-anchor="middle" class="subtitle">Error Logs</text>
+          <text x="95" y="72" text-anchor="middle" class="subtitle" style="font-size:.48rem;">Latency data</text>
+        </g>
+
+        <g class="node db" transform="translate(470,230)">
+          <rect width="180" height="80" rx="16" />
+          <use href="#databaseIcon" x="16" y="24" width="24" height="24" color="#fff" opacity="0.8"/>
+          <text x="100" y="42" text-anchor="middle">JTL_report</text>
+          <text x="100" y="58" text-anchor="middle" class="subtitle">Performance DB</text>
+          <text x="100" y="72" text-anchor="middle" class="subtitle" style="font-size:.48rem;">Postgres</text>
+        </g>
+
+        <!-- Tool to Data Source connections -->
+        <path class="arrow" d="M125 160 V230" style="animation-delay: 2.0s; opacity: 0.4;" />
+        <path class="arrow" d="M345 160 V230" style="animation-delay: 2.2s; opacity: 0.4;" />
+        <path class="arrow" d="M560 160 V230" style="animation-delay: 2.4s; opacity: 0.4;" />
+      </g>
+    </g>
+
+    <!-- Main Flow Arrows -->
+    <!-- Chat -> Agent -->
+    
+    <!-- Agent -> Chat (bidirectional response) -->
+    <path class="arrow" d="M240 325 H310" style="animation-delay: 2.8s; opacity: 0.3;" marker-start="url(#arrowHead)"/>
+    
+    <!-- Agent -> Tools (from right edge of agent cluster to tools) -->
+
+    
+    <!-- Tools -> Agent (bidirectional response) -->
+    <path class="arrow" d="M860 320 H790" style="animation-delay: 2.4s; opacity: 0.3;" marker-start="url(#arrowHead)"/>
+
+    <!-- KPI Info Box -->
+    <g class="node-group" tabindex="0" data-role="KPI Enforcement" data-desc="Enforces strict thresholds: API p90<1s, CPU<80%, Memory<80%, Network≤100ms, Errors<3%, DB reads<20ms, writes<4ms(cached)/20ms(uncached). Flags breaches in bullet-point reports.">
+      <g class="node" transform="translate(310,550)">
+        <rect width="480" height="90" rx="18" fill="#2d3b4d" stroke="#e0a821" stroke-width="2"/>
+        <text x="240" y="28" text-anchor="middle" style="font-size:.68rem; letter-spacing:.8px;">KPI ENFORCEMENT POLICY</text>
+        <text x="240" y="48" text-anchor="middle" class="subtitle" style="font-size:.55rem;">API p90&lt;1s • CPU&lt;80% • Memory&lt;80% • Network≤100ms</text>
+        <text x="240" y="64" text-anchor="middle" class="subtitle" style="font-size:.55rem;">Errors&lt;3% • No 5xx/404 • DB reads&lt;20ms • Writes&lt;4ms(cache)/20ms</text>
+        <text x="240" y="80" text-anchor="middle" class="subtitle" style="font-size:.48rem; fill:#e0a821;">Bullet-point reports • Flag breaches • Root-cause analysis</text>
+      </g>
+    </g>
+
+    <!-- Connection from Agent to KPI -->
+    <path class="arrow" d="M550 500 V550" style="animation-delay: 2.6s; opacity: 0.4;" />
+
+  </svg>
+
+  <div class="legend" aria-hidden="true">
+    <span><i class="core"></i>Trigger</span>
+    <span><i style="background:#2d1f4a;"></i>AI Agent</span>
+    <span><i style="background:#17324f;"></i>LLM Model</span>
+    <span><i style="background:#1f3a20;"></i>Memory</span>
+    <span><i style="background:#2b2f55;"></i>HTTP Tools</span>
+    <span><i style="background:#24364a;"></i>Elasticsearch</span>
+    <span><i style="background:#3a1e1e;"></i>MCP</span>
+    <span><i class="db"></i>Data Sources</span>
+  </div>
+
+  <!-- Example Conversation Box for Technical Workflow -->
+  <div class="chat-example" style="margin-top: 2.5rem; padding: 1.8rem; background: var(--panel); border: 1px solid var(--border); border-radius: 16px; max-width: 1200px; margin-left: auto; margin-right: auto;">
+    <h3 style="margin: 0 0 1.2rem 0; font-size: 1rem; color: var(--accent); letter-spacing: .6px; text-transform: uppercase;">💬 Technical Analysis Example</h3>
+    <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+      
+      <!-- User Message -->
+      <div style="align-self: flex-end; max-width: 65%; background: linear-gradient(135deg, #3d8bfd, #5f5fff); padding: .9rem 1.1rem; border-radius: 16px 16px 4px 16px; box-shadow: 0 4px 12px rgba(61, 139, 253, 0.3);">
+        <p style="margin: 0; font-size: .78rem; color: #fff; font-weight: 500;">
+          "Show me how many users Mazad handled before failing THIQAH standards."
+        </p>
+      </div>
+      
+      <!-- Assistant Response -->
+      <div style="align-self: flex-start; max-width: 95%; background: var(--panel-alt); padding: 1.2rem 1.4rem; border-radius: 16px 16px 16px 4px; border-left: 4px solid #e0a821;">
+        
+        <!-- Summary Section -->
+        <div style="margin-bottom: 1.2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border);">
+          <p style="margin: 0 0 .8rem 0; font-size: .82rem; line-height: 1.7; color: var(--text);">
+            <strong style="color: #e0a821;">⚠️ CAPACITY ASSESSMENT:</strong><br>
+            Based on the latest MAZAD performance tests in JTL report, <strong>MAZAD does not meet THIQAH KPIs</strong> at 300 or 1000 concurrent users.
+          </p>
+          <p style="margin: 0; font-size: .78rem; line-height: 1.6; color: var(--muted);">
+            <strong style="color: var(--text);">Current capacity within THIQAH standards:</strong> Below 300 concurrent users<br>
+            <strong style="color: var(--text);">Estimated KPI-compliant capacity:</strong> <span style="color: #e0a821;">~75–100 concurrent users</span> (requires validation with step-load test)
+          </p>
+        </div>
+
+        <!-- Evidence Section -->
+        <div style="margin-bottom: 1.2rem;">
+          <h4 style="margin: 0 0 .8rem 0; font-size: .75rem; color: var(--accent); letter-spacing: .5px; text-transform: uppercase;">📊 Evidence from JTL Runs</h4>
+          
+          <!-- Run A -->
+          <div style="margin-bottom: 1rem; padding: .9rem; background: rgba(61, 139, 253, 0.05); border-radius: 8px; border-left: 3px solid #ff4d5d;">
+            <p style="margin: 0 0 .5rem 0; font-size: .72rem; font-weight: 600; color: var(--text);">
+              Run A (2024-06-26, peak_users=<strong>300</strong>)
+            </p>
+            <ul style="margin: .3rem 0 0 0; padding-left: 1.3rem; font-size: .7rem; line-height: 1.8; color: var(--muted);">
+              <li><strong style="color: #ff4d5d;">API p90: 3,819 ms</strong> — ❌ exceeds KPI (&lt;1000 ms)</li>
+              <li><strong style="color: #30c48d;">Error %: 1.68%</strong> — ✅ within KPI (&lt;3%)</li>
+              <li><strong style="color: #30c48d;">HTTP 5xx/404: 0</strong> — ✅ within KPI</li>
+              <li><strong style="color: #30c48d;">p90 connect time: 0 ms</strong> — ✅ within KPI (≤100 ms)</li>
+            </ul>
+          </div>
+
+          <!-- Run B -->
+          <div style="margin-bottom: 0; padding: .9rem; background: rgba(255, 77, 93, 0.05); border-radius: 8px; border-left: 3px solid #ff4d5d;">
+            <p style="margin: 0 0 .5rem 0; font-size: .72rem; font-weight: 600; color: var(--text);">
+              Run B (2024-06-25, peak_users=<strong>1000</strong>)
+            </p>
+            <ul style="margin: .3rem 0 0 0; padding-left: 1.3rem; font-size: .7rem; line-height: 1.8; color: var(--muted);">
+              <li><strong style="color: #ff4d5d;">API p90: 12,584 ms</strong> — ❌ exceeds KPI (&lt;1000 ms)</li>
+              <li><strong style="color: #ff4d5d;">Error %: 4.21%</strong> — ❌ exceeds KPI (&lt;3%)</li>
+              <li><strong style="color: #30c48d;">HTTP 5xx/404: 0</strong> — ✅ within KPI</li>
+              <li><strong style="color: #30c48d;">p90 connect time: 9 ms</strong> — ✅ within KPI (≤100 ms)</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Top Slow Endpoints -->
+        <div style="margin-bottom: 1.2rem;">
+          <h4 style="margin: 0 0 .8rem 0; font-size: .75rem; color: #e0a821; letter-spacing: .5px; text-transform: uppercase;">🐌 Top Slow Endpoints (300-user run)</h4>
+          <div style="padding: .8rem; background: rgba(224, 168, 33, 0.05); border-radius: 8px;">
+            <ol style="margin: 0; padding-left: 1.5rem; font-size: .68rem; line-height: 1.9; color: var(--muted);">
+              <li><code style="color: #ff4d5d; background: rgba(255,77,93,0.1); padding: 2px 6px; border-radius: 4px;">GET /GetCausesOrAuctionsBySearch/Execute</code><br>
+                  <span style="font-size: .65rem;">p90: 46.7s, avg: 20.4s, err: 7.16%</span></li>
+              <li><code style="color: #ff4d5d; background: rgba(255,77,93,0.1); padding: 2px 6px; border-radius: 4px;">POST /Account/LoginForRegister</code><br>
+                  <span style="font-size: .65rem;">p90: 29.5s</span></li>
+              <li><code style="color: #ff4d5d; background: rgba(255,77,93,0.1); padding: 2px 6px; border-radius: 4px;">GET /GetAuctionPrices/GetAsync</code><br>
+                  <span style="font-size: .65rem;">p90: 26.0s</span></li>
+              <li><code style="color: #ff4d5d; background: rgba(255,77,93,0.1); padding: 2px 6px; border-radius: 4px;">POST /Account/Login</code><br>
+                  <span style="font-size: .65rem;">p90: 24.9s</span></li>
+              <li><code style="color: #ff4d5d; background: rgba(255,77,93,0.1); padding: 2px 6px; border-radius: 4px;">GET /GetLastFiveBiddings/GetAsync</code><br>
+                  <span style="font-size: .65rem;">p90: 19.4s</span></li>
+            </ol>
+          </div>
+        </div>
+
+        <!-- Actionable Next Steps -->
+        <div style="background: rgba(48, 196, 141, 0.05); padding: 1rem; border-radius: 8px; border-left: 3px solid #30c48d;">
+          <h4 style="margin: 0 0 .7rem 0; font-size: .75rem; color: #30c48d; letter-spacing: .5px; text-transform: uppercase;">🎯 Actionable Next Steps</h4>
+          <div style="font-size: .7rem; line-height: 1.7; color: var(--muted);">
+            <p style="margin: 0 0 .6rem 0;"><strong style="color: var(--text);">1. Validate Capacity:</strong><br>
+            Run step-load test: 50 → 75 → 100 → 150 → 200 → 250 → 300 users (10–15 min each)</p>
+            
+            <p style="margin: 0 0 .6rem 0;"><strong style="color: var(--text);">2. Correlate with Backend Metrics:</strong><br>
+            Pull APM/Elasticsearch data for CPU, memory, GC, DB latency during test window</p>
+            
+            <p style="margin: 0 0 .6rem 0;"><strong style="color: var(--text);">3. Targeted Remediation:</strong></p>
+            <ul style="margin: 0 0 .6rem 0; padding-left: 1.3rem;">
+              <li><strong>Search endpoint:</strong> Add DB indexes, enforce pagination, cache queries</li>
+              <li><strong>Auction endpoints:</strong> Precompute/cache aggregates, use read replicas</li>
+              <li><strong>Auth endpoints:</strong> Add connection pooling, circuit breakers, cache configs</li>
+            </ul>
+            
+            <p style="margin: 0;"><strong style="color: var(--text);">4. Infrastructure:</strong><br>
+            Ensure CPU/Memory &lt;80%, verify DB read &lt;20ms, write &lt;4ms (cached)</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Second Workflow: Business AI Performance Testing Assistant -->
+<div style="margin-top: 4rem; border-top: 2px solid var(--border); padding-top: 3rem;">
+  <header style="margin-bottom: 2rem;">
+    <h2 style="font-size:clamp(1.4rem,2.4vw,2rem); margin-top:2rem; margin-bottom:0.25rem; font-weight:600; letter-spacing:.5px;">Business AI Performance Assistant</h2>
+    <p style="margin:0; color:var(--muted); font-size:.9rem;">LangChain-powered workflow for analyzing system performance via n8n fro technical users/p>
+  </header>
+
+  <div class="flow-wrapper">
+    <svg viewBox="0 0 1400 720" role="img" aria-label="Business AI Performance Testing Assistant workflow">
+      <defs>
+        <!-- Reuse existing gradients and markers -->
+        <linearGradient id="thiqahGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ff4d9e" />
+          <stop offset="50%" stop-color="#9d4edd" />
+          <stop offset="100%" stop-color="#00d4aa" />
+        </linearGradient>
+        
+        <!-- Business Icon -->
+        <g id="businessIcon">
+          <rect x="4" y="8" width="16" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M12 8 V4 M8 4 h8" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M7 12 h10 M7 16 h10 M7 20 h6" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+        </g>
+        
+        <!-- Standards Icon -->
+        <g id="standardsIcon">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M8 12 L11 15 L16 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+      </defs>
+
+      <!-- 1. Public Chat Interface -->
+      <g class="node-group" tabindex="0" data-role="Public Chat Interface" data-desc="24/7 accessible web chat with THIQAH branding. Custom dark UI with pink/teal colors, logo, animated typing effects. Users ask natural language questions about load test results.">
+        <g class="node" transform="translate(50,230)">
+          <rect width="220" height="110" rx="18" fill="url(#thiqahGrad)" stroke="#ff4d9e" stroke-width="2"/>
+          <use href="#chatIcon" x="20" y="30" width="28" height="28" color="#fff" opacity="0.95"/>
+          <text x="120" y="46" text-anchor="middle" style="font-size:.78rem; fill:#fff;">Public Chat</text>
+          <text x="120" y="66" text-anchor="middle" class="subtitle" style="fill:#f0f0f0;">THIQAH AI Assistant</text>
+          <text x="120" y="82" text-anchor="middle" class="subtitle" style="font-size:.48rem; fill:#f0f0f0;">24/7 Available</text>
+          <text x="120" y="96" text-anchor="middle" class="subtitle" style="font-size:.45rem; fill:#ffe0f0;">Custom Dark Theme</text>
+        </g>
+      </g>
+
+      <!-- 2. Central AI Agent -->
+      <g class="node-group" tabindex="0" data-role="Business AI Agent" data-desc="Performance Testing Analyst AI. Queries JTL_Report via MCP. Applies THIQAH standards (p90<1s, errors<3%). Delivers executive summaries only - no technical details. Max 100 iterations, 3 retries.">
+        <g class="cluster" transform="translate(340,80)">
+          <rect width="480" height="440" rx="28" />
+          <text x="240" y="26" text-anchor="middle" style="font-size:.62rem; letter-spacing:1px; fill:var(--muted);">BUSINESS AI AGENT</text>
+          
+          <!-- Central Agent Node -->
+          <g class="node" transform="translate(150,60)">
+            <rect width="180" height="120" rx="18" fill="#2d1f4a" />
+            <use href="#aiIcon" x="18" y="38" width="24" height="24" color="#fff" opacity="0.9"/>
+            <text x="100" y="56" text-anchor="middle">AI Agent</text>
+            <text x="100" y="74" text-anchor="middle" class="subtitle">LangChain</text>
+            <text x="100" y="90" text-anchor="middle" class="subtitle" style="font-size:.48rem;">Performance Analyst</text>
+            <text x="100" y="104" text-anchor="middle" class="subtitle" style="font-size:.45rem;">Business-focused</text>
+          </g>
+
+          <!-- OpenAI Model -->
+          <g class="node" transform="translate(30,220)">
+            <rect width="150" height="85" rx="16" fill="#17324f" />
+            <use href="#openaiIcon" x="12" y="26" width="24" height="24" color="#fff" opacity="0.85"/>
+            <text x="82" y="44" text-anchor="middle">OpenAI</text>
+            <text x="82" y="60" text-anchor="middle" class="subtitle">GPT-5</text>
+            <text x="82" y="74" text-anchor="middle" class="subtitle" style="font-size:.48rem;">10 retries</text>
+          </g>
+
+          <!-- Simple Memory -->
+          <g class="node" transform="translate(300,220)">
+            <rect width="150" height="85" rx="16" fill="#1f3a20" />
+            <use href="#memoryIcon" x="12" y="26" width="24" height="24" color="#fff" opacity="0.85"/>
+            <text x="82" y="44" text-anchor="middle">Memory</text>
+            <text x="82" y="60" text-anchor="middle" class="subtitle">Simple Buffer</text>
+            <text x="82" y="74" text-anchor="middle" class="subtitle" style="font-size:.48rem;">Context Window</text>
+          </g>
+
+          <!-- MCP Client -->
+          <g class="node" transform="translate(150,340)">
+            <rect width="180" height="85" rx="16" fill="#3a1e1e" />
+            <use href="#mcpIcon" x="18" y="26" width="24" height="24" color="#fff" opacity="0.85"/>
+            <text x="100" y="44" text-anchor="middle">MCP Client</text>
+            <text x="100" y="60" text-anchor="middle" class="subtitle">JTL_Report DB</text>
+            <text x="100" y="74" text-anchor="middle" class="subtitle" style="font-size:.48rem;">172.17.0.3:8000</text>
+          </g>
+
+          <!-- Connections within cluster -->
+          <path class="arrow flow" d="M105 215 L210 180" style="animation-delay: 1.0s;" />
+          <path class="arrow flow" d="M375 215 L290 180" style="animation-delay: 1.2s;" />
+          <path class="arrow flow" d="M240 180 V340" style="animation-delay: 1.4s;" />
+        </g>
+      </g>
+
+      <!-- 3. THIQAH Standards Box -->
+      <g class="node-group" tabindex="0" data-role="THIQAH Standards" data-desc="Performance criteria: API 90th percentile response time must be under 1 second. Error rate must be under 3%. Pass/Fail evaluation based on these thresholds.">
+        <g class="node" transform="translate(900,150)">
+          <rect width="280" height="130" rx="18" fill="#2d3b4d" stroke="#ff4d9e" stroke-width="2.5"/>
+          <use href="#standardsIcon" x="20" y="24" width="28" height="28" color="#00d4aa" opacity="0.9"/>
+          <text x="150" y="38" text-anchor="middle" style="font-size:.72rem; letter-spacing:.8px; fill:#ff4d9e;">THIQAH STANDARDS</text>
+          <text x="150" y="60" text-anchor="middle" class="subtitle" style="font-size:.58rem;">✓ API p90 Response Time</text>
+          <text x="150" y="78" text-anchor="middle" class="subtitle" style="font-size:.58rem; fill:#00d4aa;">&lt; 1 second</text>
+          <text x="150" y="98" text-anchor="middle" class="subtitle" style="font-size:.58rem;">✓ Error Rate</text>
+          <text x="150" y="116" text-anchor="middle" class="subtitle" style="font-size:.58rem; fill:#00d4aa;">&lt; 3%</text>
+        </g>
+      </g>
+
+      <!-- 4. Database -->
+      <g class="node-group" tabindex="0" data-role="JTL_Report Database" data-desc="Backend database storing all load test results: concurrent users, response times, error rates, project names, timestamps. Accessed via MCP Server.">
+        <g class="node db" transform="translate(900,340)">
+          <rect width="280" height="90" rx="16" />
+          <use href="#databaseIcon" x="20" y="28" width="28" height="28" color="#fff" opacity="0.8"/>
+          <text x="150" y="46" text-anchor="middle">JTL_Report Database</text>
+          <text x="150" y="64" text-anchor="middle" class="subtitle">Performance Test Data</text>
+          <text x="150" y="80" text-anchor="middle" class="subtitle" style="font-size:.48rem;">Postgres @ 172.17.0.3</text>
+        </g>
+      </g>
+
+      <!-- 5. Business Output Box -->
+      <g class="node-group" tabindex="0" data-role="Business Output" data-desc="Simple, executive-level summaries. No technical jargon. Only pass/fail results, load limits, and concurrency thresholds. Example: 'Mazad met standards up to 350 users. Beyond 400 users, response time exceeded 1s.'">
+        <g class="node" transform="translate(340,560)">
+          <rect width="480" height="100" rx="18" fill="#1f3a20" stroke="#00d4aa" stroke-width="2"/>
+          <use href="#businessIcon" x="30" y="32" width="28" height="28" color="#00d4aa" opacity="0.9"/>
+          <text x="250" y="38" text-anchor="middle" style="font-size:.68rem; letter-spacing:.8px; fill:#00d4aa;">BUSINESS OUTPUT</text>
+          <text x="250" y="58" text-anchor="middle" class="subtitle" style="font-size:.55rem;">Simple bullet points • Pass/Fail results</text>
+          <text x="250" y="74" text-anchor="middle" class="subtitle" style="font-size:.55rem;">Load limits • Concurrency thresholds</text>
+          <text x="250" y="90" text-anchor="middle" class="subtitle" style="font-size:.48rem; fill:#94a3b8;">No technical details • Executive-level only</text>
+        </g>
+      </g>
+
+
+      
+      <!-- Agent -> Standards (consultation) -->
+      <path class="arrow flow" d="M820 240 H900" style="animation-delay: 1.6s; opacity: 0.5;" stroke-dasharray="6 6"/>
+      
+      <!-- MCP -> Database -->
+      <path class="arrow flow" d="M820 382 H900" style="animation-delay: 1.8s;" />
+      
+      <!-- Agent -> Business Output -->
+      <path class="arrow flow" d="M580 520 V560" style="animation-delay: 2.2s;" />
+      
+      <!-- Bidirectional chat communication -->
+      <path class="arrow" d="M270 285 H340" style="animation-delay: 2.4s; opacity: 0.3;" marker-start="url(#arrowHead)"/>
+
+    </svg>
+
+    <div class="legend" aria-hidden="true">
+      <span><i style="background: linear-gradient(135deg,#ff4d9e,#9d4edd,#00d4aa);"></i>Chat UI</span>
+      <span><i style="background:#2d1f4a;"></i>AI Agent</span>
+      <span><i style="background:#17324f;"></i>GPT-5</span>
+      <span><i style="background:#1f3a20;"></i>Memory</span>
+      <span><i style="background:#3a1e1e;"></i>MCP Client</span>
+      <span><i style="background:#2d3b4d; border: 2px solid #ff4d9e;"></i>Standards</span>
+      <span><i class="db"></i>Database</span>
+      <span><i style="background:#1f3a20; border: 2px solid #00d4aa;"></i>Output</span>
+    </div>
+
+    <!-- Example Conversation Box -->
+    <div class="chat-example" style="margin-top: 2rem; padding: 1.5rem; background: var(--panel); border: 1px solid var(--border); border-radius: 16px; max-width: 900px; margin-left: auto; margin-right: auto;">
+      <h3 style="margin: 0 0 1rem 0; font-size: .9rem; color: #ff4d9e; letter-spacing: .5px;">💬 Business Analysis Example</h3>
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <!-- User Message -->
+        <div style="align-self: flex-end; max-width: 70%; background: linear-gradient(135deg, #3d8bfd, #5f5fff); padding: .8rem 1rem; border-radius: 16px 16px 4px 16px;">
+          <p style="margin: 0; font-size: .75rem; color: #fff;">
+            "Show me how many users Mazad handled before failing THIQAH standards."
+          </p>
+        </div>
+        <!-- Assistant Response -->
+        <div style="align-self: flex-start; max-width: 80%; background: var(--panel-alt); padding: .8rem 1rem; border-radius: 16px 16px 16px 4px; border-left: 3px solid #00d4aa;">
+          <p style="margin: 0; font-size: .75rem; line-height: 1.6;">
+            <strong style="color: #00d4aa;">✅ Results for Mazad:</strong><br>
+            • Met THIQAH standards up to <strong>350 concurrent users</strong><br>
+            • Response time remained under 1 second<br>
+            • Error rate stayed below 3%<br><br>
+            <strong style="color: #ff4d9e;">⚠️ Beyond 400 users:</strong><br>
+            • Response time exceeded 1 second threshold<br>
+            • Performance degraded outside acceptable limits
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Key Features Box -->
+    <div style="margin-top: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+      <div style="background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 1rem;">
+        <h4 style="margin: 0 0 .5rem 0; font-size: .75rem; color: #ff4d9e; letter-spacing: .5px;">🎨 CUSTOM UI</h4>
+        <p style="margin: 0; font-size: .7rem; color: var(--muted); line-height: 1.5;">
+          Dark theme with THIQAH logo, pink/teal branding, animated typing effects, gradient chat bubbles
+        </p>
+      </div>
+      <div style="background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 1rem;">
+        <h4 style="margin: 0 0 .5rem 0; font-size: .75rem; color: #00d4aa; letter-spacing: .5px;">💼 BUSINESS FOCUS</h4>
+        <p style="margin: 0; font-size: .7rem; color: var(--muted); line-height: 1.5;">
+          Executive summaries only. No technical metrics. Clear pass/fail outcomes and load capacity insights
+        </p>
+      </div>
+      <div style="background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 1rem;">
+        <h4 style="margin: 0 0 .5rem 0; font-size: .75rem; color: #9d4edd; letter-spacing: .5px;">🤖 AI-POWERED</h4>
+        <p style="margin: 0; font-size: .7rem; color: var(--muted); line-height: 1.5;">
+          GPT-5 with conversational memory. Natural language queries. Smart time range interpretation
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="info-panel hidden" id="infoPanel" aria-live="polite">
+  <button id="closeInfo" aria-label="Close details">CLOSE</button>
+  <h2 id="panelTitle">Flow Detail</h2>
+  <div id="panelBody">Tap / hover a component to view its role.</div>
+</div>
+
+<script>
+const panel = document.getElementById('infoPanel');
+const title = document.getElementById('panelTitle');
+const body = document.getElementById('panelBody');
+const closeBtn = document.getElementById('closeInfo');
+
+function showPanel(role, desc){
+  title.textContent = role;
+  body.innerHTML = `<span class="panel-badge">ROLE</span>${desc}`;
+  panel.classList.remove('hidden');
+}
+
+function hidePanel(){ panel.classList.add('hidden'); }
+
+closeBtn.addEventListener('click', hidePanel);
+
+// Delegate events
+[...document.querySelectorAll('.node-group')].forEach(g => {
+  g.addEventListener('click', () => showPanel(g.dataset.role, g.dataset.desc));
+  g.addEventListener('keypress', e => { if(e.key==='Enter' || e.key===' ') { showPanel(g.dataset.role, g.dataset.desc); e.preventDefault(); }});
+  g.addEventListener('mouseenter', () => showPanel(g.dataset.role, g.dataset.desc));
+});
+
+// Close panel if clicking outside
+document.addEventListener('click', e => {
+  if(!e.target.closest('.node-group') && !e.target.closest('#infoPanel')) hidePanel();
+});
+
+// Generate animated particles
+function createParticles() {
+  const background = document.querySelector('.tech-background');
+  const particleCount = 20;
+  
+  for (let i = 0; i < particleCount; i++) {
+    const particle = document.createElement('div');
+    particle.className = 'particle';
+    particle.style.left = `${Math.random() * 100}%`;
+    particle.style.width = `${Math.random() * 4 + 2}px`;
+    particle.style.height = particle.style.width;
+    particle.style.animationDuration = `${Math.random() * 10 + 15}s`;
+    particle.style.animationDelay = `${Math.random() * 5}s`;
+    background.appendChild(particle);
+  }
+}
+
+// Generate circuit lines
+function createCircuitLines() {
+  const background = document.querySelector('.tech-background');
+  const lineCount = 8;
+  
+  for (let i = 0; i < lineCount; i++) {
+    const line = document.createElement('div');
+    line.className = 'circuit-line';
+    line.style.top = `${Math.random() * 100}%`;
+    line.style.width = `${Math.random() * 300 + 200}px`;
+    line.style.animationDuration = `${Math.random() * 8 + 12}s`;
+    line.style.animationDelay = `${Math.random() * 8}s`;
+    background.appendChild(line);
+  }
+}
+
+// Initialize background animations
+createParticles();
+createCircuitLines();
+
+// Intersection Observer for scroll-triggered animations
+const observerOptions = {
+  root: null,
+  rootMargin: '0px',
+  threshold: 0.1
+};
+
+const animateOnScroll = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      // Add animate class to trigger animations
+      if (entry.target.classList.contains('node-group')) {
+        entry.target.classList.add('animate');
+      } else if (entry.target.classList.contains('arrow')) {
+        entry.target.classList.add('animate');
+      } else if (entry.target.classList.contains('legend')) {
+        entry.target.classList.add('animate');
+      } else if (entry.target.classList.contains('chat-example')) {
+        entry.target.classList.add('animate');
+      } else if (entry.target.tagName === 'H1' || entry.target.tagName === 'H2' || 
+                 entry.target.tagName === 'H3' || entry.target.tagName === 'H4') {
+        entry.target.classList.add('animate');
+      } else if (entry.target.classList.contains('flow-wrapper')) {
+        // Animate all elements within the flow wrapper
+        const nodeGroups = entry.target.querySelectorAll('.node-group');
+        const arrows = entry.target.querySelectorAll('.arrow');
+        const legend = entry.target.querySelector('.legend');
+        
+        // Animate node groups with stagger
+        nodeGroups.forEach((node, index) => {
+          setTimeout(() => {
+            node.classList.add('animate');
+          }, index * 200);
+        });
+        
+        // Animate arrows after nodes
+        setTimeout(() => {
+          arrows.forEach((arrow, index) => {
+            setTimeout(() => {
+              arrow.classList.add('animate');
+            }, index * 100);
+          });
+        }, 800);
+        
+        // Animate legend last
+        if (legend) {
+          setTimeout(() => {
+            legend.classList.add('animate');
+          }, 2500);
+        }
+      }
+      
+      // Unobserve after animation to prevent re-triggering
+      // Comment out the line below if you want animations to repeat on scroll
+      // observerOptions.observer.unobserve(entry.target);
+    }
+  });
+}, observerOptions);
+
+// Observe all flow wrappers (for both workflows)
+document.querySelectorAll('.flow-wrapper').forEach(wrapper => {
+  animateOnScroll.observe(wrapper);
+});
+
+// Also observe individual elements if needed
+document.querySelectorAll('.node-group').forEach(node => {
+  animateOnScroll.observe(node);
+});
+
+document.querySelectorAll('.arrow').forEach(arrow => {
+  animateOnScroll.observe(arrow);
+});
+
+document.querySelectorAll('.legend').forEach(legend => {
+  animateOnScroll.observe(legend);
+});
+
+// Observe titles (h1, h2, h3, h4)
+document.querySelectorAll('h1, h2, h3, h4').forEach(title => {
+  animateOnScroll.observe(title);
+});
+
+// Observe chat example boxes
+document.querySelectorAll('.chat-example').forEach(chatBox => {
+  animateOnScroll.observe(chatBox);
+});
+</script>
+</body>
+</html>
